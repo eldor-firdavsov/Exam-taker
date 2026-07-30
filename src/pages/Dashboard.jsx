@@ -195,4 +195,77 @@ export default function Dashboard() {
             >
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex-1">
-            
+                  <Link
+                    to={`/dashboard/exams/${exam.id}`}
+                    className="text-base font-semibold transition-colors hover:opacity-80 sm:text-lg"
+                    style={{ color: 'oklch(0.55 0.18 255)' }}
+                  >
+                    {exam.title}
+                  </Link>
+                  <p className="mt-0.5 text-sm" style={{ color: 'oklch(0.55 0.03 255)' }}>
+                    {exam.description || 'No description'}
+                  </p>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-3 text-xs" style={{ color: 'oklch(0.65 0.02 255)' }}>
+                    <span>{exam.duration_minutes} min</span>
+                    <StatusBadge status={exam.status} />
+                    <span>{new Date(exam.created_at).toLocaleDateString()}</span>
+                  </div>
+                </div>
+
+                <div className="sm:ml-4">
+                  {confirmId === exam.id ? (
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(exam.id)}
+                        className="cursor-pointer rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-all hover:brightness-110"
+                        style={{ backgroundColor: 'oklch(0.55 0.17 30)' }}
+                      >
+                        Confirm
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmId(null)}
+                        className="cursor-pointer rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
+                        style={{ backgroundColor: 'oklch(0.93 0.01 255)', color: 'oklch(0.45 0.02 255)' }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmId(exam.id)}
+                      className="cursor-pointer rounded-lg px-3 py-1.5 text-xs font-medium transition-colors hover:opacity-80"
+                      style={{ backgroundColor: 'oklch(0.93 0.05 30)', color: 'oklch(0.40 0.12 30)' }}
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="animate-fade-in rounded-2xl border-2 border-dashed p-16 text-center" style={{ borderColor: 'oklch(0.90 0.01 255)' }}>
+          <div className="mb-3 text-4xl" style={{ color: 'oklch(0.72 0.02 255)' }}>&#128203;</div>
+          <h3 className="mb-1 text-base font-semibold" style={{ color: 'oklch(0.30 0.02 255)' }}>
+            No exams yet
+          </h3>
+          <p className="mb-5 text-sm" style={{ color: 'oklch(0.55 0.03 255)' }}>
+            Create your first exam to get started.
+          </p>
+          <button
+            type="button"
+            onClick={() => setShowForm(true)}
+            className="cursor-pointer rounded-xl px-4 py-2 text-sm font-semibold text-white transition-all hover:brightness-110"
+            style={{ backgroundColor: 'oklch(0.55 0.18 255)' }}
+          >
+            Create Exam
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
