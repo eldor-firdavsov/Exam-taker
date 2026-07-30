@@ -1,0 +1,24 @@
+{
+  "name": "exam-taker",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.111.0",
+    "@tailwindcss/vite": "^4.3.3",
+    "@tanstack/react-query": "^5.101.4",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-router-dom": "^7.18.2",
+    "tailwindcss": "^4.3.3"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.4.1",
+    "vite": "^6.3.2"
+  }
+}
