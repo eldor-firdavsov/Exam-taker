@@ -34,11 +34,11 @@ export function useExam(id) {
 export function useCreateExam() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ title, description, duration_minutes }) => {
+    mutationFn: async ({ title, description, duration_minutes, expires_at }) => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
 
-      const { data, error } = await supabase
+      const { data: exam, error } = await supabase
         .from('exams')
         .insert({
           teacher_id: user.id,
@@ -49,7 +49,15 @@ export function useCreateExam() {
         .select()
         .single()
       if (error) throw error
-      return data
+
+      // Auto-generate 6-digit Kahoot-style Room PIN link
+      const pinCode = Math.floor(100000 + Math.random() * 900000).toString()
+      const linkPayload = { exam_id: exam.id, token: pinCode }
+      if (expires_at) linkPayload.expires_at = expires_at
+
+      await supabase.from('exam_links').insert(linkPayload)
+
+      return exam
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['exams'] }),
   })

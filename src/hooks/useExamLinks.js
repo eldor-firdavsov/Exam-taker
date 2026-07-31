@@ -2,8 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 
 function generateToken() {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-  return Array.from({ length: 16 }, () => chars.charAt(Math.floor(Math.random() * chars.length))).join('')
+  // Generate Kahoot-style 6-digit PIN code (100000 - 999999)
+  return Math.floor(100000 + Math.random() * 900000).toString()
 }
 
 export function useExamLinks(examId) {

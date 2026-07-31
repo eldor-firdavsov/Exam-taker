@@ -16,6 +16,13 @@ export default function Layout() {
           </Link>
           {user && (
             <div className="flex items-center gap-3">
+              <Link
+                to="/"
+                className="hidden text-xs font-semibold sm:block rounded-lg px-2.5 py-1.5 transition-colors hover:bg-slate-100"
+                style={{ color: 'oklch(0.55 0.18 255)' }}
+              >
+                Talabalar sahifasi &rarr;
+              </Link>
               <span className="hidden text-xs sm:block" style={{ color: 'oklch(0.55 0.03 255)' }}>
                 {user.email}
               </span>
@@ -25,7 +32,7 @@ export default function Layout() {
                 className="cursor-pointer rounded-lg px-3 py-1.5 text-sm font-medium transition-colors hover:bg-white/80"
                 style={{ color: 'oklch(0.45 0.16 255)', backgroundColor: 'oklch(0.90 0.04 255)' }}
               >
-                Logout
+                Chiqish
               </button>
             </div>
           )}

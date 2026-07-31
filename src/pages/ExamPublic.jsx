@@ -94,11 +94,35 @@ export default function ExamPublic() {
     }
   }, [subStatus, deadlineAt, now])
 
+  // Signed URLs map for inline media preview (images & videos)
+  const [mediaUrls, setMediaUrls] = useState({})
+
+  useEffect(() => {
+    if (!files || files.length === 0) return
+    let isMounted = true
+    const loadSignedUrls = async () => {
+      const urls = {}
+      for (const f of files) {
+        const isImage = f.file_name.match(/\.(png|jpg|jpeg|gif|webp)$/i)
+        const isVideo = f.file_name.match(/\.(mp4|webm|mov|avi)$/i)
+        if (isImage || isVideo) {
+          const { data } = await supabase.storage.from('exam-materials').createSignedUrl(f.file_path, 7200)
+          if (data?.signedUrl) {
+            urls[f.id] = data.signedUrl
+          }
+        }
+      }
+      if (isMounted) setMediaUrls(urls)
+    }
+    loadSignedUrls()
+    return () => { isMounted = false }
+  }, [files])
+
   const handleDownload = useCallback(async (file) => {
     const { data, error } = await supabase.storage
       .from('exam-materials')
       .createSignedUrl(file.file_path, 3600)
-    if (error || !data) { toast('Could not generate download link.', 'error'); return }
+    if (error || !data) { toast("Faylni yuklab olish havolasini yaratishda xatolik.", 'error'); return }
     window.open(data.signedUrl, '_blank')
   }, [toast])
 
@@ -110,18 +134,18 @@ export default function ExamPublic() {
       body: { token, student_name: studentName.trim() },
     })
     setStarting(false)
-    if (error || data?.error) { setActionError(data?.error || error?.message || 'Failed to start exam'); return }
+    if (error || data?.error) { setActionError(data?.error || error?.message || "Imtihonni boshlashda xatolik"); return }
     setSubmissionId(data.submission_id)
     setDeadlineAt(data.deadline_at)
     setSubStatus('in_progress')
     setNow(Date.now())
     setStoredSession(token, { submissionId: data.submission_id, deadlineAt: data.deadline_at })
-    toast('Exam started! Timer is running.', 'success')
+    toast("Imtihon boshlandi! Vaqt hisoblanmoqda.", 'success')
   }
 
   const validateZip = (file) => {
-    if (!file.name.toLowerCase().endsWith('.zip')) return 'Only .zip files are accepted.'
-    if (file.size > 100 * 1024 * 1024) return 'File exceeds 100 MB limit.'
+    if (!file.name.toLowerCase().endsWith('.zip')) return "Faqat .zip formatidagi fayllar qabul qilinadi."
+    if (file.size > 100 * 1024 * 1024) return "Fayl hajmi 100 MB limitidan oshmasligi kerak."
     return null
   }
 
@@ -145,26 +169,26 @@ export default function ExamPublic() {
     const { data, error } = await supabase.functions.invoke('submit-exam', { body: formData })
     setSubmitting(false)
     if (error || data?.error) {
-      const msg = data?.error || error?.message || 'Submission failed'
+      const msg = data?.error || error?.message || "Topshirishda xatolik yuz berdi"
       if (msg.toLowerCase().includes("time's up") || msg.toLowerCase().includes('expired')) {
         setSubStatus('expired')
-        setActionError("Time's up \u2014 this exam can no longer be submitted.")
-        toast("Time's up! Exam could not be submitted.", 'error')
+        setActionError("Imtihon vaqti tugadi \u2014 endi topshiriqni yuklab bo'lmaydi.")
+        toast("Vaqt tugadi! Imtihon topshirilmadi.", 'error')
       } else { setActionError(msg); toast(msg, 'error') }
       return
     }
     setSubStatus('submitted')
     setSelectedFile(null)
     removeStoredSession(token)
-    toast('Exam submitted successfully!', 'success')
+    toast("Imtihon muvaffaqiyatli topshirildi!", 'success')
   }
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: 'oklch(0.97 0.005 255)' }}>
-        <div className="flex items-center gap-3 text-sm" style={{ color: 'oklch(0.55 0.03 255)' }}>
-          <span className="inline-block h-5 w-5 animate-spin rounded-full border-2" style={{ borderColor: 'oklch(0.82 0.08 255)', borderTopColor: 'oklch(0.55 0.18 255)' }} />
-          Loading...
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 font-sans">
+        <div className="flex items-center gap-3 rounded-2xl bg-white px-6 py-4 shadow-sm border border-slate-200 text-sm font-medium text-slate-600">
+          <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+          Yuklanmoqda...
         </div>
       </div>
     )
@@ -172,15 +196,16 @@ export default function ExamPublic() {
 
   if (error || !exam) {
     return (
-      <div className="flex min-h-screen items-center justify-center px-4" style={{ backgroundColor: 'oklch(0.97 0.005 255)' }}>
-        <div className="animate-scale-in w-full max-w-md rounded-2xl border bg-white p-8 text-center shadow-sm" style={{ borderColor: 'oklch(0.92 0.005 255)' }}>
-          <div className="mb-4 text-4xl" style={{ color: 'oklch(0.55 0.17 30)' }}>&#10060;</div>
-          <h1 className="mb-2 text-xl font-bold" style={{ color: 'oklch(0.20 0.07 255)' }}>
-            Invalid Link
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 font-sans">
+        <div className="animate-scale-in w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-xl shadow-slate-200/50">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-2xl text-red-600">
+            &#9888;
+          </div>
+          <h1 className="mb-2 text-xl font-bold text-slate-900">
+            Imtihon kodi noto'g'ri
           </h1>
-          <p className="text-sm" style={{ color: 'oklch(0.55 0.03 255)' }}>
-            This exam link does not exist or may have been removed.
-            Please check the URL and try again.
+          <p className="text-sm text-slate-500 leading-relaxed">
+            Ushbu imtihon kodi mavjud emas. Kodning to'g'riligini tekshirib, qaytadan kiriting.
           </p>
         </div>
       </div>
@@ -192,185 +217,258 @@ export default function ExamPublic() {
   const isUrgent = countdownMs > 0 && countdownMs <= 300_000
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: 'oklch(0.97 0.005 255)' }}>
-      <header className="border-b bg-white/80 backdrop-blur-md px-4 py-3 sm:px-6 sm:py-4" style={{ borderColor: 'oklch(0.92 0.005 255)' }}>
-        <div className="mx-auto flex max-w-2xl items-center gap-2">
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold text-white" style={{ backgroundColor: 'oklch(0.55 0.18 255)' }}>
-            E
-          </span>
-          <span className="text-base font-bold sm:text-lg" style={{ color: 'oklch(0.20 0.07 255)' }}>
-            Exam Taker
-          </span>
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
+      {/* Top Header */}
+      <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/80 backdrop-blur-md px-4 py-3 sm:px-8">
+        <div className="mx-auto flex max-w-3xl items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 font-bold text-white shadow-sm">
+              E
+            </span>
+            <div>
+              <span className="text-base font-bold text-slate-900 block leading-none">
+                Exam Taker
+              </span>
+              <span className="text-[11px] text-slate-500 font-medium">
+                Talaba seansi
+              </span>
+            </div>
+          </div>
+
+          {submissionId && !isFinished && (
+            <div className={`flex items-center gap-2 rounded-2xl px-4 py-1.5 border transition-all ${
+              isUrgent
+                ? 'bg-red-50 border-red-200 text-red-600 animate-pulse-soft'
+                : 'bg-blue-50 border-blue-100 text-blue-900'
+            }`}>
+              <span className="text-xs font-semibold">Qolgan vaqt:</span>
+              <span className="font-mono text-base font-extrabold tabular-nums">
+                {countdownMs > 0 ? formatCountdown(countdownMs) : '0:00'}
+              </span>
+            </div>
+          )}
         </div>
       </header>
 
-      <main className="mx-auto max-w-2xl px-3 py-6 sm:px-4 sm:py-10">
-        <div className="animate-fade-in rounded-2xl border bg-white p-5 shadow-sm sm:p-8" style={{ borderColor: 'oklch(0.92 0.005 255)' }}>
-          <h2 className="mb-1 text-xl font-bold sm:text-2xl" style={{ color: 'oklch(0.15 0.02 255)' }}>
-            {exam.title}
-          </h2>
-          {exam.description && (
-            <p className="mb-6 text-sm" style={{ color: 'oklch(0.55 0.03 255)' }}>
-              {exam.description}
-            </p>
-          )}
+      <main className="mx-auto max-w-3xl px-4 py-8 sm:py-12">
+        <div className="animate-fade-in space-y-6">
+          {/* Exam Info Card */}
+          <div className="rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-8 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
+              <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+                {exam.title}
+              </h1>
+              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                {exam.duration_minutes} daqiqa
+              </span>
+            </div>
+            {exam.description && (
+              <p className="text-sm text-slate-600 leading-relaxed">
+                {exam.description}
+              </p>
+            )}
 
-          {!submissionId ? (
-            <>
-              <div className="mb-5 rounded-xl p-4" style={{ backgroundColor: 'oklch(0.96 0.02 255)' }}>
-                <p className="text-sm leading-relaxed" style={{ color: 'oklch(0.35 0.02 255)' }}>
-                  Enter your name below and click <strong>Start Exam</strong> to begin.
-                  The timer will start immediately and cannot be paused.
-                  {' '}<strong>Duration: {exam.duration_minutes} minutes.</strong>
-                </p>
-              </div>
+            {!submissionId ? (
+              <div className="mt-8 border-t border-slate-100 pt-6">
+                <div className="mb-6 rounded-2xl bg-blue-50/70 p-4 border border-blue-100/60">
+                  <p className="text-xs sm:text-sm text-blue-900 leading-relaxed font-medium">
+                    Ism va familiyangizni kiriting va <strong>Imtihonni boshlash</strong> tugmasini bosing. Vaqt hisobi darhol boshlanadi.
+                  </p>
+                </div>
 
-              {actionError && (
-                <p className="animate-fade-in mb-4 rounded-xl p-3 text-sm" style={{ backgroundColor: 'oklch(0.93 0.05 30)', color: 'oklch(0.40 0.12 30)' }}>
-                  {actionError}
-                </p>
-              )}
+                {actionError && (
+                  <div className="animate-fade-in mb-4 rounded-2xl bg-red-50 p-4 text-xs font-semibold text-red-600 border border-red-100">
+                    {actionError}
+                  </div>
+                )}
 
-              <form onSubmit={handleStart}>
-                <div className="flex flex-col gap-3 sm:flex-row">
-                  <input
-                    type="text"
-                    required
-                    placeholder="Your full name"
-                    className="flex-1 rounded-xl border px-3.5 py-2.5 text-sm transition-shadow focus:outline-none focus:ring-2"
-                    style={{ borderColor: 'oklch(0.90 0.01 255)', color: 'oklch(0.15 0.02 255)', '--tw-ring-color': 'oklch(0.73 0.12 255)' }}
-                    value={studentName}
-                    onChange={(e) => setStudentName(e.target.value)}
-                  />
+                <form onSubmit={handleStart} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                      To'liq ism va familiyangiz
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Masalan: Ali Valiyev"
+                      className="w-full rounded-2xl border-2 border-slate-200 bg-slate-50/50 px-4 py-3.5 text-sm font-semibold text-slate-900 transition-all focus:border-blue-600 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-100"
+                      value={studentName}
+                      onChange={(e) => setStudentName(e.target.value)}
+                    />
+                  </div>
+
                   <button
                     type="submit"
                     disabled={starting}
-                    className="rounded-xl px-6 py-2.5 text-sm font-semibold text-white transition-all hover:brightness-110 disabled:opacity-50"
-                    style={{ backgroundColor: 'oklch(0.55 0.18 255)' }}
+                    className="w-full rounded-2xl bg-blue-600 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-600/30 transition-all hover:bg-blue-700 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50"
                   >
-                    {starting ? 'Starting...' : 'Start Exam'}
+                    {starting ? 'Boshlanmoqda...' : 'Imtihonni boshlash \u2192'}
                   </button>
-                </div>
-              </form>
-            </>
-          ) : isFinished ? (
-            <div className="py-6 text-center">
-              {subStatus === 'submitted' ? (
-                <div className="animate-scale-in">
-                  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full text-2xl text-white" style={{ backgroundColor: 'oklch(0.52 0.15 160)' }}>
-                    &#10003;
-                  </div>
-                  <h3 className="mb-1 text-lg font-bold" style={{ color: 'oklch(0.35 0.10 145)' }}>
-                    Exam Submitted
-                  </h3>
-                  <p className="text-sm" style={{ color: 'oklch(0.55 0.03 255)' }}>
-                    Your submission has been recorded. You may now close this page.
-                  </p>
-                </div>
-              ) : (
-                <div className="animate-scale-in">
-                  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full text-2xl text-white" style={{ backgroundColor: 'oklch(0.55 0.17 30)' }}>
-                    &#9200;
-                  </div>
-                  <h3 className="mb-1 text-lg font-bold" style={{ color: 'oklch(0.40 0.12 30)' }}>
-                    Time&rsquo;s Up
-                  </h3>
-                  <p className="text-sm" style={{ color: 'oklch(0.55 0.03 255)' }}>
-                    This exam can no longer be submitted.
-                  </p>
-                </div>
-              )}
-            </div>
-          ) : (
-            <>
-              <div className="mb-5 flex items-center justify-between rounded-xl px-4 py-3 sm:px-5 sm:py-4" style={{ backgroundColor: isUrgent ? 'oklch(0.93 0.05 30)' : 'oklch(0.96 0.02 255)' }}>
-                <div>
-                  <span className="text-xs font-medium" style={{ color: isUrgent ? 'oklch(0.40 0.12 30)' : 'oklch(0.55 0.03 255)' }}>
-                    {studentName}
-                  </span>
-                  <p className="text-xs" style={{ color: isUrgent ? 'oklch(0.45 0.10 30)' : 'oklch(0.65 0.02 255)' }}>
-                    {exam.duration_minutes} min exam
-                  </p>
-                </div>
-                <div className="text-right">
-                  <span
-                    className={`text-base font-bold tabular-nums sm:text-lg ${
-                      isUrgent ? 'animate-pulse-soft' : ''
-                    }`}
-                    style={{ color: isUrgent ? 'oklch(0.40 0.12 30)' : 'oklch(0.38 0.14 255)' }}
-                  >
-                    {countdownMs > 0 ? formatCountdown(countdownMs) : '0:00'}
-                  </span>
-                  <p className="text-xs" style={{ color: isUrgent ? 'oklch(0.45 0.10 30)' : 'oklch(0.65 0.02 255)' }}>
-                    remaining
-                  </p>
-                </div>
+                </form>
               </div>
-
-              <div className="mb-6">
-                <h3 className="mb-3 text-sm font-semibold" style={{ color: 'oklch(0.30 0.02 255)' }}>
-                  Materials
-                </h3>
-                {files && files.length > 0 ? (
-                  <ul className="divide-y rounded-xl border" style={{ borderColor: 'oklch(0.92 0.005 255)' }}>
-                    {files.map((f) => (
-                      <li key={f.id} className="flex items-center justify-between px-4 py-3 first:rounded-t-xl last:rounded-b-xl hover:bg-white/50">
-                        <span className="truncate pr-2 text-sm" style={{ color: 'oklch(0.30 0.02 255)' }}>
-                          {f.file_name}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => handleDownload(f)}
-                          className="shrink-0 cursor-pointer rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-all hover:brightness-110"
-                          style={{ backgroundColor: 'oklch(0.55 0.18 255)' }}
-                        >
-                          Download
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
+            ) : isFinished ? (
+              <div className="mt-8 border-t border-slate-100 pt-8 text-center">
+                {subStatus === 'submitted' ? (
+                  <div className="animate-scale-in py-4">
+                    <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-emerald-50 text-2xl text-emerald-600 border border-emerald-100 shadow-sm">
+                      &#10003;
+                    </div>
+                    <h3 className="mb-2 text-xl font-bold text-slate-900">
+                      Imtihon muvaffaqiyatli topshirildi
+                    </h3>
+                    <p className="text-sm text-slate-500 max-w-md mx-auto">
+                      Javoblaringiz va faylingiz o'qituvchiga yuborildi. Sahifani yopishingiz mumkin.
+                    </p>
+                  </div>
                 ) : (
-                  <p className="text-sm" style={{ color: 'oklch(0.65 0.02 255)' }}>
-                    No materials uploaded.
+                  <div className="animate-scale-in py-4">
+                    <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-amber-50 text-2xl text-amber-600 border border-amber-100 shadow-sm">
+                      &#9200;
+                    </div>
+                    <h3 className="mb-2 text-xl font-bold text-slate-900">
+                      Imtihon vaqti tugadi
+                    </h3>
+                    <p className="text-sm text-slate-500 max-w-md mx-auto">
+                      Ushbu imtihon seansi uchun ajratilgan vaqt nihoyasiga yetdi.
+                    </p>
+                  </div>
+                )}
+              </div>
+            ) : null}
+          </div>
+
+          {/* Active Exam Section: Materials & Submissions */}
+          {submissionId && !isFinished && (
+            <div className="space-y-6 animate-slide-up">
+              {/* Materials Card */}
+              <div className="rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-8 shadow-sm">
+                <h2 className="text-base font-bold text-slate-900 mb-4 flex items-center justify-between">
+                  <span>Imtihon materiallari</span>
+                  <span className="text-xs font-normal text-slate-500">
+                    {files ? `${files.length} ta fayl` : ''}
+                  </span>
+                </h2>
+
+                {files && files.length > 0 ? (
+                  <div className="space-y-4">
+                    {files.map((f) => {
+                      const isImage = f.file_name.match(/\.(png|jpg|jpeg|gif|webp)$/i)
+                      const isVideo = f.file_name.match(/\.(mp4|webm|mov|avi)$/i)
+                      const isZip = f.file_name.match(/\.zip$/i)
+                      const src = mediaUrls[f.id]
+                      const badgeText = isImage ? 'Rasm' : isVideo ? 'Video' : isZip ? 'ZIP' : 'Hujjat'
+
+                      return (
+                        <div
+                          key={f.id}
+                          className="rounded-2xl border border-slate-200/80 bg-slate-50/50 p-4 transition-all hover:bg-white hover:shadow-md"
+                        >
+                          <div className="flex items-center justify-between gap-3 mb-2">
+                            <div className="flex items-center gap-2.5 truncate">
+                              <span className="rounded-lg bg-slate-200/80 px-2 py-0.5 text-[11px] font-bold text-slate-700 uppercase">
+                                {badgeText}
+                              </span>
+                              <span className="truncate text-sm font-bold text-slate-800">
+                                {f.file_name}
+                              </span>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => handleDownload(f)}
+                              className="shrink-0 rounded-xl bg-slate-900 px-3.5 py-1.5 text-xs font-semibold text-white transition-all hover:bg-slate-800"
+                            >
+                              Yuklab olish
+                            </button>
+                          </div>
+
+                          {/* Image preview */}
+                          {isImage && src && (
+                            <div className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-white p-1">
+                              <img
+                                src={src}
+                                alt={f.file_name}
+                                className="max-h-80 w-full object-contain rounded-lg cursor-pointer transition-opacity hover:opacity-95"
+                                onClick={() => handleDownload(f)}
+                              />
+                            </div>
+                          )}
+
+                          {/* Video Player */}
+                          {isVideo && src && (
+                            <div className="mt-3 overflow-hidden rounded-xl bg-black">
+                              <video
+                                controls
+                                controlsList="nodownload"
+                                src={src}
+                                className="max-h-80 w-full rounded-xl"
+                              >
+                                Brauzeringiz HTML5 videoni qo'llab-quvvatlamaydi.
+                              </video>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-400 italic">
+                    O'qituvchi tomonidan qo'shimcha materiallar biriktirilmagan.
                   </p>
                 )}
               </div>
 
-              <div className="rounded-xl border p-4 sm:p-5" style={{ borderColor: 'oklch(0.92 0.005 255)', backgroundColor: 'oklch(0.975 0.005 255)' }}>
-                <h3 className="mb-3 text-sm font-semibold" style={{ color: 'oklch(0.30 0.02 255)' }}>
-                  Submit your work
-                </h3>
+              {/* Submit Solution Card */}
+              <div className="rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-8 shadow-sm">
+                <h2 className="text-base font-bold text-slate-900 mb-1">
+                  Javobingizni topshirish (.zip fayl)
+                </h2>
+                <p className="text-xs text-slate-500 mb-5">
+                  Barcha javoblar yoki kodingizni bitta <strong>.zip</strong> arxivga solib yuklang.
+                </p>
 
-                <input
-                  type="file"
-                  accept=".zip"
-                  required
-                  onChange={handleFileSelect}
-                  className="mb-3 block w-full text-sm file:mr-3 file:cursor-pointer file:rounded-xl file:border-0 file:px-3 file:py-2 file:text-sm file:font-medium file:text-white file:transition-all file:hover:brightness-110 file:bg-[oklch(0.55_0.18_255)]"
-                />
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="relative">
+                    <input
+                      type="file"
+                      accept=".zip"
+                      required
+                      onChange={handleFileSelect}
+                      className="block w-full text-xs text-slate-500 file:mr-4 file:cursor-pointer file:rounded-xl file:border-0 file:bg-blue-50 file:px-4 file:py-2.5 file:text-xs file:font-semibold file:text-blue-700 file:transition-all hover:file:bg-blue-100"
+                    />
+                  </div>
 
-                {fileError && (
-                  <p className="animate-fade-in mb-2 text-xs" style={{ color: 'oklch(0.55 0.17 30)' }}>
-                    {fileError}
-                  </p>
-                )}
-                {actionError && (
-                  <p className="animate-fade-in mb-2 text-xs" style={{ color: 'oklch(0.55 0.17 30)' }}>
-                    {actionError}
-                  </p>
-                )}
+                  {selectedFile && !fileError && (
+                    <div className="animate-fade-in rounded-xl bg-emerald-50 p-3 text-xs font-semibold text-emerald-800 border border-emerald-200/80 flex items-center justify-between">
+                      <span>{selectedFile.name}</span>
+                      <span className="font-normal text-emerald-600">
+                        {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
+                      </span>
+                    </div>
+                  )}
 
-                <button
-                  type="button"
-                  disabled={submitting || !selectedFile || !!fileError}
-                  onClick={handleSubmit}
-                  className="w-full rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-all hover:brightness-110 disabled:opacity-50 sm:w-auto"
-                  style={{ backgroundColor: 'oklch(0.52 0.15 160)' }}
-                >
-                  {submitting ? 'Uploading...' : 'Submit Exam'}
-                </button>
+                  {fileError && (
+                    <div className="animate-fade-in text-xs font-semibold text-red-600">
+                      {fileError}
+                    </div>
+                  )}
+
+                  {actionError && (
+                    <div className="animate-fade-in text-xs font-semibold text-red-600">
+                      {actionError}
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={submitting || !selectedFile || !!fileError}
+                    className="w-full sm:w-auto rounded-2xl bg-emerald-600 px-8 py-3.5 text-sm font-bold text-white shadow-lg shadow-emerald-600/30 transition-all hover:bg-emerald-700 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:translate-y-0 disabled:shadow-none"
+                  >
+                    {submitting ? 'Yuklanmoqda...' : 'Topshiriqni yuborish'}
+                  </button>
+                </form>
               </div>
-            </>
+            </div>
           )}
         </div>
       </main>

@@ -3,22 +3,24 @@ import { supabase } from '../lib/supabase'
 
 const ALLOWED_TYPES = [
   'application/pdf',
-  'image/png', 'image/jpeg', 'image/gif',
+  'image/png', 'image/jpeg', 'image/gif', 'image/webp',
+  'video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo',
   'application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   'application/vnd.ms-powerpoint',
   'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-  'application/zip', 'application/x-zip-compressed',
+  'application/zip', 'application/x-zip-compressed', 'application/x-zip',
   'text/plain',
 ]
-const MAX_SIZE = 50 * 1024 * 1024
+const MAX_SIZE = 100 * 1024 * 1024
 
 export function validateExamFile(file) {
-  if (!ALLOWED_TYPES.includes(file.type) && !file.name.match(/\.(pdf|doc|docx|ppt|pptx|txt|png|jpg|jpeg|gif|zip)$/i)) {
-    return 'Unsupported file type. Allowed: PDF, Word, PowerPoint, images, ZIP, text files.'
+  const extMatch = file.name.match(/\.(pdf|doc|docx|ppt|pptx|txt|png|jpg|jpeg|gif|webp|mp4|webm|mov|avi|zip)$/i)
+  if (!ALLOWED_TYPES.includes(file.type) && !extMatch) {
+    return "Qo'llab-quvvatlanmaydigan fayl formati. Ruxsat etilgan: ZIP, PNG / Rasmlar, Videolar (MP4, WebM, MOV), PDF, Word, PowerPoint, Matn."
   }
   if (file.size > MAX_SIZE) {
-    return 'File exceeds 50 MB limit.'
+    return "Fayl hajmi 100 MB limitidan oshmasligi kerak."
   }
   return null
 }
@@ -51,7 +53,7 @@ export function useUploadFile() {
       const { error: uploadError } = await supabase.storage
         .from('exam-materials')
         .upload(filePath, file)
-      if (uploadError) throw new Error('Failed to upload file. Please try again.')
+      if (uploadError) throw new Error("Faylni saqlash xotirasiga yuklashda xatolik.")
 
       const { error: dbError } = await supabase.from('exam_files').insert({
         exam_id: examId,
@@ -60,7 +62,7 @@ export function useUploadFile() {
       })
       if (dbError) {
         await supabase.storage.from('exam-materials').remove([filePath])
-        throw new Error('Failed to save file record.')
+        throw new Error("Fayl ma'lumotlarini saqlashda xatolik.")
       }
     },
     onSuccess: (_data, variables) =>
@@ -75,13 +77,13 @@ export function useDeleteFile() {
       const { error: storageError } = await supabase.storage
         .from('exam-materials')
         .remove([filePath])
-      if (storageError) throw new Error('Failed to delete file from storage.')
+      if (storageError) throw new Error("Faylni saqlash xotirasidan o'chirishda xatolik.")
 
       const { error: dbError } = await supabase
         .from('exam_files')
         .delete()
         .eq('id', id)
-      if (dbError) throw new Error('Failed to delete file record.')
+      if (dbError) throw new Error("Fayl yozuvini o'chirishda xatolik.")
     },
     onSuccess: (_data, variables) =>
       qc.invalidateQueries({ queryKey: ['exam-files', variables.examId] }),

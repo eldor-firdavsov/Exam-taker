@@ -8,16 +8,16 @@ import { useExamLinks, useCreateExamLink, useUpdateExamLink, useDeleteExamLink }
 import { useSubmissions, useGradeSubmission } from '../hooks/useSubmissions'
 
 const STATUS_BADGES = {
-  in_progress: { bg: 'oklch(0.94 0.03 80)', text: 'oklch(0.40 0.10 80)' },
-  submitted: { bg: 'oklch(0.92 0.05 145)', text: 'oklch(0.35 0.10 145)' },
-  expired: { bg: 'oklch(0.93 0.05 30)', text: 'oklch(0.40 0.12 30)' },
+  in_progress: { bg: 'oklch(0.94 0.03 80)', text: 'oklch(0.40 0.10 80)', label: 'Bajarilmoqda' },
+  submitted: { bg: 'oklch(0.92 0.05 145)', text: 'oklch(0.35 0.10 145)', label: 'Topshirildi' },
+  expired: { bg: 'oklch(0.93 0.05 30)', text: 'oklch(0.40 0.12 30)', label: "Vaqti tugadi" },
 }
 
 function StatusBadge({ status }) {
-  const s = STATUS_BADGES[status] || { bg: 'oklch(0.93 0.01 255)', text: 'oklch(0.45 0.02 255)' }
+  const s = STATUS_BADGES[status] || { bg: 'oklch(0.93 0.01 255)', text: 'oklch(0.45 0.02 255)', label: status }
   return (
     <span className="rounded-full px-2.5 py-0.5 text-xs font-medium" style={{ backgroundColor: s.bg, color: s.text }}>
-      {status === 'in_progress' ? 'In Progress' : status.charAt(0).toUpperCase() + status.slice(1)}
+      {s.label}
     </span>
   )
 }
@@ -49,7 +49,7 @@ function GradeCell({ submission, onGrade }) {
         onBlur={handleBlur}
         disabled={saving}
       />
-      {saving && <span className="text-xs" style={{ color: 'oklch(0.65 0.02 255)' }}>saving...</span>}
+      {saving && <span className="text-xs" style={{ color: 'oklch(0.65 0.02 255)' }}>saqlanmoqda...</span>}
       {submission.grade != null && !saving && (
         <span className="text-xs" style={{ color: 'oklch(0.65 0.02 255)' }}>/ 100</span>
       )}
@@ -68,7 +68,11 @@ function formatDate(d) {
   return date.toLocaleDateString()
 }
 
-const STATUS_OPTIONS = ['draft', 'active', 'archived']
+const STATUS_OPTIONS = [
+  { value: 'draft', label: 'Qoralama' },
+  { value: 'active', label: 'Faol' },
+  { value: 'archived', label: 'Arxivlangan' },
+]
 
 function SectionCard({ title, children, className = '' }) {
   return (
@@ -129,7 +133,7 @@ export default function ExamAdmin() {
       <div className="flex min-h-[60vh] items-center justify-center">
         <div className="flex items-center gap-3 text-sm" style={{ color: 'oklch(0.55 0.03 255)' }}>
           <span className="inline-block h-5 w-5 animate-spin rounded-full border-2" style={{ borderColor: 'oklch(0.82 0.08 255)', borderTopColor: 'oklch(0.55 0.18 255)' }} />
-          Loading exam...
+          Imtihon yuklanmoqda...
         </div>
       </div>
     )
@@ -141,10 +145,10 @@ export default function ExamAdmin() {
         <div className="animate-fade-in max-w-md rounded-2xl border bg-white p-8 text-center shadow-sm">
           <div className="mb-3 text-3xl" style={{ color: 'oklch(0.55 0.17 30)' }}>&#9888;</div>
           <h2 className="mb-1 text-lg font-bold" style={{ color: 'oklch(0.20 0.07 255)' }}>
-            Exam Not Found
+            Imtihon topilmadi
           </h2>
           <p className="text-sm" style={{ color: 'oklch(0.55 0.03 255)' }}>
-            {examError?.message || 'This exam does not exist or you do not have access.'}
+            {examError?.message || "Ushbu imtihon mavjud emas yoki sizda ruxsat yo'q."}
           </p>
         </div>
       </div>
@@ -166,8 +170,8 @@ export default function ExamAdmin() {
         duration_minutes: parseInt(duration, 10), status,
       })
       setDirty(false)
-      toast('Exam saved.', 'success')
-    } catch { toast('Failed to save exam.', 'error') }
+      toast("O'zgarishlar saqlandi.", 'success')
+    } catch { toast("Saqlashda xatolik yuz berdi.", 'error') }
   }
 
   const handleFileChange = async (e) => {
@@ -176,55 +180,54 @@ export default function ExamAdmin() {
     const validationErr = validateExamFile(file)
     if (validationErr) { setUploadError(validationErr); if (fileInputRef.current) fileInputRef.current.value = ''; return }
     setUploadError(null); setUploading(true)
-    try { await uploadFile.mutateAsync({ examId, file }); toast('File uploaded.', 'success') }
-    catch (err) { setUploadError(err.message || 'Upload failed.') }
+    try { await uploadFile.mutateAsync({ examId, file }); toast("Fayl yuklandi.", 'success') }
+    catch (err) { setUploadError(err.message || "Fayl yuklashda xatolik.") }
     setUploading(false)
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   const handleDeleteFile = async (f) => {
-    try { await deleteFile.mutateAsync({ id: f.id, filePath: f.file_path, examId }); toast('File deleted.', 'success') }
-    catch { toast('Failed to delete file.', 'error') }
+    try { await deleteFile.mutateAsync({ id: f.id, filePath: f.file_path, examId }); toast("Fayl o'chirildi.", 'success') }
+    catch { toast("Faylni o'chirishda xatolik.", 'error') }
   }
 
   const handleGenerateLink = async () => {
-    try { await createLink.mutateAsync({ examId }); toast('Shareable link created.', 'success') }
-    catch { toast('Failed to create link.', 'error') }
+    try { await createLink.mutateAsync({ examId }); toast("Yangi imtihon kodi yaratildi.", 'success') }
+    catch { toast("Kod yaratishda xatolik.", 'error') }
   }
 
   const handleDeleteLink = async (link) => {
-    try { await deleteLink.mutateAsync({ id: link.id, examId }); toast('Link deleted.', 'success') }
-    catch { toast('Failed to delete link.', 'error') }
+    try { await deleteLink.mutateAsync({ id: link.id, examId }); toast("Imtihon kodi o'chirildi.", 'success') }
+    catch { toast("Kodni o'chirishda xatolik.", 'error') }
   }
 
   const handleCopyLink = async (link) => {
-    const url = `${window.location.origin}/exam/${link.token}`
     try {
-      await navigator.clipboard.writeText(url)
+      await navigator.clipboard.writeText(link.token)
       setCopiedId(link.id)
       setTimeout(() => setCopiedId(null), 2000)
-      toast('Link copied to clipboard.', 'success')
-    } catch { toast('Could not copy link.', 'error') }
+      toast("Imtihon kodi nusxalandi.", 'success')
+    } catch { toast("Nusxalashda xatolik.", 'error') }
   }
 
   const handleSaveExpiry = async (link) => {
     try {
       await updateLink.mutateAsync({ id: link.id, examId, expires_at: expiryInput || null })
       setShowLinkExpiry(null); setExpiryInput('')
-      toast('Link expiry updated.', 'success')
-    } catch { toast('Failed to update expiry.', 'error') }
+      toast("Amal qilish muddati yangilandi.", 'success')
+    } catch { toast("Muddati yangilashda xatolik.", 'error') }
   }
 
   const handleDownloadZip = async (sub) => {
     if (!sub.file_path) return
     const { data, error } = await supabase.storage.from('submissions').createSignedUrl(sub.file_path, 3600)
-    if (error || !data) { toast('Could not generate download link.', 'error'); return }
+    if (error || !data) { toast("Faylni yuklab olish havolasini yaratishda xatolik.", 'error'); return }
     window.open(data.signedUrl, '_blank')
   }
 
   const handleGrade = async ({ id, grade }) => {
-    try { await gradeSubmission.mutateAsync({ id, grade }); toast(grade != null ? 'Grade saved.' : 'Grade removed.', 'success') }
-    catch { toast('Failed to save grade.', 'error') }
+    try { await gradeSubmission.mutateAsync({ id, grade }); toast(grade != null ? "Baho saqlandi." : "Baho o'chirildi.", 'success') }
+    catch { toast("Bahoni saqlashda xatolik.", 'error') }
   }
 
   const linkExpired = (link) => link.expires_at && new Date(link.expires_at) < new Date()
@@ -250,16 +253,16 @@ export default function ExamAdmin() {
       </h1>
 
       <div className="space-y-5">
-        <SectionCard title="Exam Details">
+        <SectionCard title="Imtihon ma'lumotlari">
           <form onSubmit={handleSave}>
-            <DetailRow label="Title">
+            <DetailRow label="Imtihon nomi">
               <input type="text" required
                 className="w-full rounded-xl border px-3.5 py-2.5 text-sm transition-shadow focus:outline-none focus:ring-2"
                 style={{ borderColor: 'oklch(0.90 0.01 255)', color: 'oklch(0.15 0.02 255)', '--tw-ring-color': 'oklch(0.73 0.12 255)' }}
                 value={title}
                 onChange={(e) => { setTitle(e.target.value); setDirty(true) }} />
             </DetailRow>
-            <DetailRow label="Description">
+            <DetailRow label="Tavsif">
               <textarea rows={3}
                 className="w-full rounded-xl border px-3.5 py-2.5 text-sm transition-shadow focus:outline-none focus:ring-2"
                 style={{ borderColor: 'oklch(0.90 0.01 255)', color: 'oklch(0.15 0.02 255)', '--tw-ring-color': 'oklch(0.73 0.12 255)' }}
@@ -269,7 +272,7 @@ export default function ExamAdmin() {
             <div className="mb-4 flex gap-4">
               <div className="flex-1">
                 <label className="mb-1.5 block text-sm font-medium" style={{ color: 'oklch(0.30 0.02 255)' }}>
-                  Duration (min)
+                  Davomiyligi (daqiqa)
                 </label>
                 <input type="number" required min={1}
                   className="w-full rounded-xl border px-3.5 py-2.5 text-sm transition-shadow focus:outline-none focus:ring-2"
@@ -279,7 +282,7 @@ export default function ExamAdmin() {
               </div>
               <div className="flex-1">
                 <label className="mb-1.5 block text-sm font-medium" style={{ color: 'oklch(0.30 0.02 255)' }}>
-                  Status
+                  Holat
                 </label>
                 <select
                   className="w-full rounded-xl border px-3.5 py-2.5 text-sm transition-shadow focus:outline-none focus:ring-2"
@@ -287,7 +290,7 @@ export default function ExamAdmin() {
                   value={status}
                   onChange={(e) => { setStatus(e.target.value); setDirty(true) }}>
                   {STATUS_OPTIONS.map((s) => (
-                    <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                    <option key={s.value} value={s.value}>{s.label}</option>
                   ))}
                 </select>
               </div>
@@ -295,163 +298,222 @@ export default function ExamAdmin() {
             <button type="submit" disabled={!dirty || updateExam.isPending}
               className="rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-all hover:brightness-110 disabled:opacity-50"
               style={{ backgroundColor: 'oklch(0.55 0.18 255)' }}>
-              {updateExam.isPending ? 'Saving...' : 'Save Changes'}
+              {updateExam.isPending ? 'Saqlanmoqda...' : "O'zgarishlarni saqlash"}
             </button>
           </form>
         </SectionCard>
 
-        <SectionCard title="Materials">
+        <SectionCard title="Imtihon materiallari va fayllari">
           <div className="mb-4">
-            <input ref={fileInputRef} type="file" onChange={handleFileChange} disabled={uploading}
-              className="block w-full text-sm file:mr-3 file:cursor-pointer file:rounded-xl file:border-0 file:px-3 file:py-2 file:text-sm file:font-medium file:text-white file:transition-all file:hover:brightness-110 file:bg-[oklch(0.55_0.18_255)]" />
-            {uploading && <p className="mt-1.5 text-xs" style={{ color: 'oklch(0.65 0.02 255)' }}>Uploading...</p>}
-            {uploadError && <p className="mt-1.5 text-xs" style={{ color: 'oklch(0.55 0.17 30)' }}>{uploadError}</p>}
-            <p className="mt-1.5 text-xs" style={{ color: 'oklch(0.65 0.02 255)' }}>
-              Allowed: PDF, Word, PowerPoint, images, ZIP, text. Max 50 MB.
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".zip,.png,.jpg,.jpeg,.gif,.webp,.mp4,.webm,.mov,.avi,.pdf,.doc,.docx,.ppt,.pptx,.txt"
+              onChange={handleFileChange}
+              disabled={uploading}
+              className="block w-full text-sm file:mr-3 file:cursor-pointer file:rounded-xl file:border-0 file:px-3.5 file:py-2 file:text-sm file:font-semibold file:text-white file:transition-all file:hover:brightness-110 file:bg-[oklch(0.55_0.18_255)]"
+            />
+            {uploading && <p className="mt-1.5 text-xs font-medium" style={{ color: 'oklch(0.55 0.18 255)' }}>Fayl yuklanmoqda...</p>}
+            {uploadError && <p className="mt-1.5 text-xs font-medium" style={{ color: 'oklch(0.55 0.17 30)' }}>{uploadError}</p>}
+            <p className="mt-2 text-xs" style={{ color: 'oklch(0.55 0.03 255)' }}>
+              Ruxsat etilgan: <strong>ZIP arxivlar, PNG / Rasmlar, Videolar (MP4, WebM, MOV)</strong>, PDF, Word, PowerPoint, Matn. Maksimal hajm: 100 MB.
             </p>
           </div>
           {files && files.length > 0 ? (
-            <ul className="divide-y" style={{ borderColor: 'oklch(0.92 0.005 255)' }}>
-              {files.map((f) => (
-                <li key={f.id} className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
-                  <span className="truncate text-sm" style={{ color: 'oklch(0.30 0.02 255)' }}>{f.file_name}</span>
-                  <button type="button" onClick={() => handleDeleteFile(f)}
-                    className="shrink-0 cursor-pointer rounded-lg px-2.5 py-1 text-xs font-medium transition-colors hover:opacity-80"
-                    style={{ backgroundColor: 'oklch(0.93 0.05 30)', color: 'oklch(0.40 0.12 30)' }}>
-                    Delete
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm" style={{ color: 'oklch(0.65 0.02 255)' }}>No files uploaded yet.</p>
-          )}
-        </SectionCard>
-
-        <SectionCard title="Shareable Links">
-          <div className="mb-4 flex items-center justify-between">
-            <p className="text-sm" style={{ color: 'oklch(0.55 0.03 255)' }}>
-              Links let students access this exam without an account.
-            </p>
-            <button type="button" onClick={handleGenerateLink} disabled={createLink.isPending}
-              className="cursor-pointer rounded-xl px-4 py-2 text-sm font-semibold text-white transition-all hover:brightness-110 disabled:opacity-50"
-              style={{ backgroundColor: 'oklch(0.55 0.18 255)' }}>
-              {createLink.isPending ? 'Generating...' : 'Generate Link'}
-            </button>
-          </div>
-          {links && links.length > 0 ? (
-            <ul className="divide-y" style={{ borderColor: 'oklch(0.92 0.005 255)' }}>
-              {links.map((link) => {
-                const url = `${window.location.origin}/exam/${link.token}`
-                const expired = linkExpired(link)
+            <ul className="divide-y rounded-xl border p-1" style={{ borderColor: 'oklch(0.92 0.005 255)' }}>
+              {files.map((f) => {
+                const isImage = f.file_name.match(/\.(png|jpg|jpeg|gif|webp)$/i)
+                const isVideo = f.file_name.match(/\.(mp4|webm|mov|avi)$/i)
+                const isZip = f.file_name.match(/\.zip$/i)
+                const fileTypeLabel = isImage ? '[Rasm]' : isVideo ? '[Video]' : isZip ? '[ZIP]' : '[Hujjat]'
                 return (
-                  <li key={link.id} className="flex flex-col gap-3 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-mono" style={{ color: 'oklch(0.35 0.02 255)' }}>{url}</p>
-                      <p className="mt-0.5 text-xs" style={{ color: 'oklch(0.65 0.02 255)' }}>
-                        Created {formatDate(link.created_at)}
-                        {link.expires_at && <> &middot; Expires {formatDate(link.expires_at)}</>}
-                        {expired && <span className="ml-1.5 font-medium" style={{ color: 'oklch(0.55 0.17 30)' }}>(expired)</span>}
-                      </p>
+                  <li key={f.id} className="flex items-center justify-between px-3 py-2.5">
+                    <div className="flex items-center gap-2 truncate">
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-600">
+                        {fileTypeLabel}
+                      </span>
+                      <span className="truncate text-sm font-medium" style={{ color: 'oklch(0.25 0.02 255)' }}>
+                        {f.file_name}
+                      </span>
                     </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      {showLinkExpiry === link.id ? (
-                        <div className="flex items-center gap-1.5">
-                          <input type="datetime-local"
-                            className="rounded-lg border px-2 py-1.5 text-xs"
-                            style={{ borderColor: 'oklch(0.90 0.01 255)' }}
-                            value={expiryInput}
-                            onChange={(e) => setExpiryInput(e.target.value)} />
-                          <button type="button" onClick={() => handleSaveExpiry(link)}
-                            className="cursor-pointer rounded-lg px-2.5 py-1.5 text-xs font-medium text-white"
-                            style={{ backgroundColor: 'oklch(0.55 0.18 255)' }}>
-                            Save
-                          </button>
-                          <button type="button" onClick={() => { setShowLinkExpiry(null); setExpiryInput('') }}
-                            className="cursor-pointer rounded-lg px-2.5 py-1.5 text-xs font-medium"
-                            style={{ backgroundColor: 'oklch(0.93 0.01 255)', color: 'oklch(0.45 0.02 255)' }}>
-                            Cancel
-                          </button>
-                        </div>
-                      ) : (
-                        <>
-                          {!link.expires_at && (
-                            <button type="button" onClick={() => { setShowLinkExpiry(link.id); setExpiryInput('') }}
-                              className="cursor-pointer rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors hover:opacity-80"
-                              style={{ backgroundColor: 'oklch(0.93 0.01 255)', color: 'oklch(0.45 0.02 255)' }}>
-                              Set Expiry
-                            </button>
-                          )}
-                          {link.expires_at && !expired && (
-                            <button type="button" onClick={() => { setShowLinkExpiry(link.id); setExpiryInput(new Date(link.expires_at).toISOString().slice(0, 16)) }}
-                              className="cursor-pointer rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors hover:opacity-80"
-                              style={{ backgroundColor: 'oklch(0.93 0.01 255)', color: 'oklch(0.45 0.02 255)' }}>
-                              Edit Expiry
-                            </button>
-                          )}
-                        </>
-                      )}
-                      <span className="hidden sm:inline text-xs" style={{ color: 'oklch(0.80 0.01 255)' }}>|</span>
-                      <button type="button" onClick={() => handleCopyLink(link)}
-                        className="cursor-pointer rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors hover:opacity-80"
-                        style={{ backgroundColor: 'oklch(0.92 0.05 145)', color: 'oklch(0.35 0.10 145)' }}>
-                        {copiedId === link.id ? 'Copied!' : 'Copy'}
-                      </button>
-                      <button type="button" onClick={() => handleDeleteLink(link)}
-                        className="cursor-pointer rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors hover:opacity-80"
-                        style={{ backgroundColor: 'oklch(0.93 0.05 30)', color: 'oklch(0.40 0.12 30)' }}>
-                        Delete
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteFile(f)}
+                      className="shrink-0 cursor-pointer rounded-lg px-2.5 py-1 text-xs font-medium transition-colors hover:opacity-80"
+                      style={{ backgroundColor: 'oklch(0.93 0.05 30)', color: 'oklch(0.40 0.12 30)' }}
+                    >
+                      O'chirish
+                    </button>
                   </li>
                 )
               })}
             </ul>
           ) : (
-            <p className="text-sm" style={{ color: 'oklch(0.65 0.02 255)' }}>No links generated yet.</p>
+            <p className="text-sm" style={{ color: 'oklch(0.65 0.02 255)' }}>Hali materiallar yuklanmagan.</p>
           )}
         </SectionCard>
 
-        <SectionCard title="Submissions">
+        <SectionCard title="Imtihon kodlari va kirish">
+          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm" style={{ color: 'oklch(0.55 0.03 255)' }}>
+              Talabalar imtihonni boshlash uchun ushbu 6 xonali kohni Talabalar sahifasida kiritadilar.
+            </p>
+            <button
+              type="button"
+              onClick={handleGenerateLink}
+              disabled={createLink.isPending}
+              className="cursor-pointer shrink-0 rounded-xl px-4 py-2 text-sm font-semibold text-white transition-all hover:brightness-110 disabled:opacity-50"
+              style={{ backgroundColor: 'oklch(0.55 0.18 255)' }}
+            >
+              {createLink.isPending ? 'Yaratilmoqda...' : '+ Yangi kod yaratish'}
+            </button>
+          </div>
+          {links && links.length > 0 ? (
+            <div className="space-y-3">
+              {links.map((link) => {
+                const expired = linkExpired(link)
+                const pinDisplay = link.token.length === 6 ? `${link.token.slice(0, 3)} - ${link.token.slice(3)}` : link.token
+                return (
+                  <div
+                    key={link.id}
+                    className="flex flex-col gap-3 rounded-2xl border p-4 sm:flex-row sm:items-center sm:justify-between"
+                    style={{
+                      borderColor: expired ? 'oklch(0.90 0.08 30)' : 'oklch(0.90 0.03 255)',
+                      backgroundColor: expired ? 'oklch(0.98 0.02 30)' : 'oklch(0.985 0.005 255)',
+                    }}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                          Imtihon kodi:
+                        </span>
+                        <span className="font-mono text-2xl font-black tracking-wider" style={{ color: expired ? 'oklch(0.50 0.12 30)' : 'oklch(0.40 0.18 255)' }}>
+                          {pinDisplay}
+                        </span>
+                        {expired ? (
+                          <span className="rounded-full px-2.5 py-0.5 text-xs font-semibold" style={{ backgroundColor: 'oklch(0.93 0.05 30)', color: 'oklch(0.40 0.12 30)' }}>
+                            Muddati o'tgan
+                          </span>
+                        ) : (
+                          <span className="rounded-full px-2.5 py-0.5 text-xs font-semibold" style={{ backgroundColor: 'oklch(0.92 0.05 145)', color: 'oklch(0.35 0.10 145)' }}>
+                            Faol
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-1 text-xs" style={{ color: 'oklch(0.60 0.02 255)' }}>
+                        Yaratilgan: {formatDate(link.created_at)}
+                        {link.expires_at && <> &bull; Tugash vaqti: <strong className="font-medium">{formatDate(link.expires_at)}</strong></>}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      {showLinkExpiry === link.id ? (
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="datetime-local"
+                            className="rounded-lg border px-2 py-1.5 text-xs"
+                            style={{ borderColor: 'oklch(0.90 0.01 255)' }}
+                            value={expiryInput}
+                            onChange={(e) => setExpiryInput(e.target.value)}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleSaveExpiry(link)}
+                            className="cursor-pointer rounded-lg px-2.5 py-1.5 text-xs font-medium text-white"
+                            style={{ backgroundColor: 'oklch(0.55 0.18 255)' }}
+                          >
+                            Saqlash
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setShowLinkExpiry(null); setExpiryInput('') }}
+                            className="cursor-pointer rounded-lg px-2.5 py-1.5 text-xs font-medium"
+                            style={{ backgroundColor: 'oklch(0.93 0.01 255)', color: 'oklch(0.45 0.02 255)' }}
+                          >
+                            Bekor qilish
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowLinkExpiry(link.id)
+                            setExpiryInput(link.expires_at ? new Date(link.expires_at).toISOString().slice(0, 16) : '')
+                          }}
+                          className="cursor-pointer rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors hover:opacity-80"
+                          style={{ backgroundColor: 'oklch(0.93 0.03 255)', color: 'oklch(0.35 0.08 255)' }}
+                        >
+                          {link.expires_at ? "Muddati o'zgartirish" : 'Muddati belgilash'}
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => handleCopyLink(link)}
+                        className="cursor-pointer rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-all hover:brightness-110"
+                        style={{ backgroundColor: 'oklch(0.55 0.18 255)' }}
+                      >
+                        {copiedId === link.id ? 'Nusxalandi!' : 'Kodni nusxalash'}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteLink(link)}
+                        className="cursor-pointer rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors hover:opacity-80"
+                        style={{ backgroundColor: 'oklch(0.93 0.05 30)', color: 'oklch(0.40 0.12 30)' }}
+                      >
+                        O'chirish
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <p className="text-sm" style={{ color: 'oklch(0.65 0.02 255)' }}>Hali imtihon kodi yaratilmagan.</p>
+          )}
+        </SectionCard>
+
+        <SectionCard title="Topshirilgan ishlar">
           <div className="mb-4 flex flex-wrap items-center gap-3">
             <select className="rounded-xl border px-3 py-2 text-xs font-medium"
               style={{ borderColor: 'oklch(0.90 0.01 255)', color: 'oklch(0.35 0.02 255)' }}
               value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-              <option value="all">All Status</option>
-              <option value="in_progress">In Progress</option>
-              <option value="submitted">Submitted</option>
-              <option value="expired">Expired</option>
+              <option value="all">Barcha holatlar</option>
+              <option value="in_progress">Bajarilmoqda</option>
+              <option value="submitted">Topshirildi</option>
+              <option value="expired">Muddati o'tgan</option>
             </select>
             <select className="rounded-xl border px-3 py-2 text-xs font-medium"
               style={{ borderColor: 'oklch(0.90 0.01 255)', color: 'oklch(0.35 0.02 255)' }}
               value={gradeFilter} onChange={(e) => setGradeFilter(e.target.value)}>
-              <option value="all">All Grades</option>
-              <option value="graded">Graded</option>
-              <option value="ungraded">Ungraded</option>
+              <option value="all">Barcha baholar</option>
+              <option value="graded">Baholangan</option>
+              <option value="ungraded">Baholanmagan</option>
             </select>
             <select className="rounded-xl border px-3 py-2 text-xs font-medium"
               style={{ borderColor: 'oklch(0.90 0.01 255)', color: 'oklch(0.35 0.02 255)' }}
               value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-              <option value="submitted_at">Sort by Date</option>
-              <option value="student_name">Sort by Name</option>
+              <option value="submitted_at">Sana bo'yicha</option>
+              <option value="student_name">Ism bo'yicha</option>
             </select>
           </div>
 
           {subsLoading ? (
             <div className="flex items-center gap-2 py-6 text-sm" style={{ color: 'oklch(0.55 0.03 255)' }}>
               <span className="inline-block h-4 w-4 animate-spin rounded-full border-2" style={{ borderColor: 'oklch(0.82 0.08 255)', borderTopColor: 'oklch(0.55 0.18 255)' }} />
-              Loading submissions...
+              Topshiriqlar yuklanmoqda...
             </div>
           ) : filtered.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left text-xs font-medium" style={{ borderColor: 'oklch(0.92 0.005 255)', color: 'oklch(0.55 0.03 255)' }}>
-                    <th className="pb-2.5 pr-4 font-medium">Student</th>
-                    <th className="pb-2.5 pr-4 font-medium">Status</th>
-                    <th className="pb-2.5 pr-4 font-medium">Submitted</th>
-                    <th className="pb-2.5 pr-4 font-medium">File</th>
-                    <th className="pb-2.5 font-medium">Grade</th>
+                    <th className="pb-2.5 pr-4 font-medium">Talaba</th>
+                    <th className="pb-2.5 pr-4 font-medium">Holat</th>
+                    <th className="pb-2.5 pr-4 font-medium">Topshirilgan vaqt</th>
+                    <th className="pb-2.5 pr-4 font-medium">Topshiriq fayli</th>
+                    <th className="pb-2.5 font-medium">Baho</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y" style={{ borderColor: 'oklch(0.92 0.005 255)' }}>
@@ -469,7 +531,7 @@ export default function ExamAdmin() {
                           <button type="button" onClick={() => handleDownloadZip(sub)}
                             className="cursor-pointer rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-all hover:brightness-110"
                             style={{ backgroundColor: 'oklch(0.55 0.18 255)' }}>
-                            Download
+                            Yuklab olish
                           </button>
                         ) : (
                           <span className="text-xs" style={{ color: 'oklch(0.65 0.02 255)' }}>{'\u2014'}</span>
@@ -486,8 +548,8 @@ export default function ExamAdmin() {
           ) : (
             <p className="py-6 text-sm" style={{ color: 'oklch(0.65 0.02 255)' }}>
               {submissions && submissions.length > 0
-                ? 'No submissions match the current filters.'
-                : 'No submissions yet.'}
+                ? 'Filtrga mos keladigan topshiriqlar topilmadi.'
+                : 'Hali topshiriqlar yuklanmagan.'}
             </p>
           )}
         </SectionCard>

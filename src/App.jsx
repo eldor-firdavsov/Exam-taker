@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import Layout from './components/Layout'
+import StudentHome from './pages/StudentHome'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import ExamAdmin from './pages/ExamAdmin'
@@ -12,6 +13,8 @@ export default function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
+          <Route path="/" element={<StudentHome />} />
+          <Route path="/student" element={<StudentHome />} />
           <Route path="/login" element={<Login />} />
           <Route element={<ProtectedRoute />}>
             <Route element={<Layout />}>
@@ -20,7 +23,7 @@ export default function App() {
             </Route>
           </Route>
           <Route path="/exam/:token" element={<ExamPublic />} />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
