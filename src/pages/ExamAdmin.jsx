@@ -1,22 +1,23 @@
 import { useState, useRef } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../components/Toast'
 import { useExam, useUpdateExam } from '../hooks/useExams'
 import { useExamFiles, useUploadFile, useDeleteFile, validateExamFile } from '../hooks/useExamFiles'
 import { useExamLinks, useCreateExamLink, useUpdateExamLink, useDeleteExamLink } from '../hooks/useExamLinks'
 import { useSubmissions, useGradeSubmission } from '../hooks/useSubmissions'
+import { ArrowLeft, Radio, FileText, Upload, Copy, Trash2, CheckCircle2, Clock, AlertTriangle, Download } from 'lucide-react'
 
 const STATUS_BADGES = {
-  in_progress: { bg: 'oklch(0.94 0.03 80)', text: 'oklch(0.40 0.10 80)', label: 'Bajarilmoqda' },
-  submitted: { bg: 'oklch(0.92 0.05 145)', text: 'oklch(0.35 0.10 145)', label: 'Topshirildi' },
-  expired: { bg: 'oklch(0.93 0.05 30)', text: 'oklch(0.40 0.12 30)', label: "Vaqti tugadi" },
+  in_progress: { bg: 'bg-blue-50', text: 'text-[#228BE6]', border: 'border-blue-200', label: 'Bajarilmoqda' },
+  submitted: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', label: 'Topshirildi' },
+  expired: { bg: 'bg-amber-50', text: 'text-amber-800', border: 'border-amber-200', label: "Vaqti tugadi" },
 }
 
 function StatusBadge({ status }) {
-  const s = STATUS_BADGES[status] || { bg: 'oklch(0.93 0.01 255)', text: 'oklch(0.45 0.02 255)', label: status }
+  const s = STATUS_BADGES[status] || { bg: 'bg-slate-100', text: 'text-slate-600', border: 'border-slate-200', label: status }
   return (
-    <span className="rounded-full px-2.5 py-0.5 text-xs font-medium" style={{ backgroundColor: s.bg, color: s.text }}>
+    <span className={`rounded px-2 py-0.5 text-xs font-semibold border ${s.bg} ${s.text} ${s.border}`}>
       {s.label}
     </span>
   )
@@ -37,21 +38,20 @@ function GradeCell({ submission, onGrade }) {
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-1.5">
       <input
         type="number"
         min={0}
         max={100}
-        className="w-16 rounded-lg border px-2 py-1.5 text-sm focus:outline-none focus:ring-2"
-        style={{ borderColor: 'oklch(0.90 0.01 255)', color: 'oklch(0.15 0.02 255)', '--tw-ring-color': 'oklch(0.73 0.12 255)' }}
+        className="w-14 rounded border border-slate-300 bg-white px-2 py-1 text-xs font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-[#228BE6]"
         value={value}
         onChange={(e) => setValue(e.target.value === '' ? '' : e.target.value)}
         onBlur={handleBlur}
         disabled={saving}
       />
-      {saving && <span className="text-xs" style={{ color: 'oklch(0.65 0.02 255)' }}>saqlanmoqda...</span>}
+      {saving && <span className="text-[10px] text-slate-400">saqlanmoqda...</span>}
       {submission.grade != null && !saving && (
-        <span className="text-xs" style={{ color: 'oklch(0.65 0.02 255)' }}>/ 100</span>
+        <span className="text-xs text-slate-400 font-semibold">/ 100</span>
       )}
     </div>
   )
@@ -76,21 +76,10 @@ const STATUS_OPTIONS = [
 
 function SectionCard({ title, children, className = '' }) {
   return (
-    <div className={`rounded-2xl border bg-white p-5 shadow-sm sm:p-6 ${className}`} style={{ borderColor: 'oklch(0.92 0.005 255)' }}>
-      <h2 className="mb-4 text-base font-semibold" style={{ color: 'oklch(0.20 0.07 255)' }}>
+    <div className={`rounded-lg border border-slate-200 bg-white p-5 ${className}`}>
+      <h2 className="mb-3 text-sm font-bold text-slate-900 uppercase tracking-wider">
         {title}
       </h2>
-      {children}
-    </div>
-  )
-}
-
-function DetailRow({ label, children }) {
-  return (
-    <div className="mb-4">
-      <label className="mb-1.5 block text-sm font-medium" style={{ color: 'oklch(0.30 0.02 255)' }}>
-        {label}
-      </label>
       {children}
     </div>
   )
@@ -125,16 +114,11 @@ export default function ExamAdmin() {
   const [filterStatus, setFilterStatus] = useState('all')
   const [sortBy, setSortBy] = useState('submitted_at')
   const [gradeFilter, setGradeFilter] = useState('all')
-  const [showLinkExpiry, setShowLinkExpiry] = useState(null)
-  const [expiryInput, setExpiryInput] = useState('')
 
   if (isLoading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="flex items-center gap-3 text-sm" style={{ color: 'oklch(0.55 0.03 255)' }}>
-          <span className="inline-block h-5 w-5 animate-spin rounded-full border-2" style={{ borderColor: 'oklch(0.82 0.08 255)', borderTopColor: 'oklch(0.55 0.18 255)' }} />
-          Imtihon yuklanmoqda...
-        </div>
+        <div className="text-xs font-medium text-slate-500">Imtihon yuklanmoqda...</div>
       </div>
     )
   }
@@ -142,12 +126,12 @@ export default function ExamAdmin() {
   if (examError || !exam) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center px-4">
-        <div className="animate-fade-in max-w-md rounded-2xl border bg-white p-8 text-center shadow-sm">
-          <div className="mb-3 text-3xl" style={{ color: 'oklch(0.55 0.17 30)' }}>&#9888;</div>
-          <h2 className="mb-1 text-lg font-bold" style={{ color: 'oklch(0.20 0.07 255)' }}>
+        <div className="max-w-md rounded-lg border border-slate-200 bg-white p-6 text-center">
+          <AlertTriangle className="mx-auto h-8 w-8 text-amber-500 mb-2" />
+          <h2 className="mb-1 text-base font-bold text-slate-900">
             Imtihon topilmadi
           </h2>
-          <p className="text-sm" style={{ color: 'oklch(0.55 0.03 255)' }}>
+          <p className="text-xs text-slate-500">
             {examError?.message || "Ushbu imtihon mavjud emas yoki sizda ruxsat yo'q."}
           </p>
         </div>
@@ -210,14 +194,6 @@ export default function ExamAdmin() {
     } catch { toast("Nusxalashda xatolik.", 'error') }
   }
 
-  const handleSaveExpiry = async (link) => {
-    try {
-      await updateLink.mutateAsync({ id: link.id, examId, expires_at: expiryInput || null })
-      setShowLinkExpiry(null); setExpiryInput('')
-      toast("Amal qilish muddati yangilandi.", 'success')
-    } catch { toast("Muddati yangilashda xatolik.", 'error') }
-  }
-
   const handleDownloadZip = async (sub) => {
     if (!sub.file_path) return
     const { data, error } = await supabase.storage.from('submissions').createSignedUrl(sub.file_path, 3600)
@@ -247,312 +223,246 @@ export default function ExamAdmin() {
   })
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-10">
-      <h1 className="mb-6 text-xl font-bold sm:text-2xl animate-fade-in" style={{ color: 'oklch(0.15 0.02 255)' }}>
-        {exam.title}
-      </h1>
+    <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+        <div>
+          <Link to="/dashboard" className="text-xs font-semibold text-[#228BE6] hover:underline flex items-center gap-1">
+            <ArrowLeft className="h-3.5 w-3.5" />
+            <span>Imtihonlar ro'yxatiga qaytish</span>
+          </Link>
+          <h1 className="text-xl font-bold text-slate-900 mt-1">
+            {exam.title}
+          </h1>
+        </div>
 
-      <div className="space-y-5">
-        <SectionCard title="Imtihon ma'lumotlari">
-          <form onSubmit={handleSave}>
-            <DetailRow label="Imtihon nomi">
-              <input type="text" required
-                className="w-full rounded-xl border px-3.5 py-2.5 text-sm transition-shadow focus:outline-none focus:ring-2"
-                style={{ borderColor: 'oklch(0.90 0.01 255)', color: 'oklch(0.15 0.02 255)', '--tw-ring-color': 'oklch(0.73 0.12 255)' }}
-                value={title}
-                onChange={(e) => { setTitle(e.target.value); setDirty(true) }} />
-            </DetailRow>
-            <DetailRow label="Tavsif">
-              <textarea rows={3}
-                className="w-full rounded-xl border px-3.5 py-2.5 text-sm transition-shadow focus:outline-none focus:ring-2"
-                style={{ borderColor: 'oklch(0.90 0.01 255)', color: 'oklch(0.15 0.02 255)', '--tw-ring-color': 'oklch(0.73 0.12 255)' }}
-                value={description}
-                onChange={(e) => { setDescription(e.target.value); setDirty(true) }} />
-            </DetailRow>
-            <div className="mb-4 flex gap-4">
-              <div className="flex-1">
-                <label className="mb-1.5 block text-sm font-medium" style={{ color: 'oklch(0.30 0.02 255)' }}>
-                  Davomiyligi (daqiqa)
-                </label>
-                <input type="number" required min={1}
-                  className="w-full rounded-xl border px-3.5 py-2.5 text-sm transition-shadow focus:outline-none focus:ring-2"
-                  style={{ borderColor: 'oklch(0.90 0.01 255)', color: 'oklch(0.15 0.02 255)', '--tw-ring-color': 'oklch(0.73 0.12 255)' }}
-                  value={duration}
-                  onChange={(e) => { setDuration(e.target.value); setDirty(true) }} />
+        <Link
+          to="/dashboard/live"
+          className="cursor-pointer inline-flex items-center gap-1.5 rounded-md bg-emerald-50 border border-emerald-200 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 transition-colors self-start sm:self-auto"
+        >
+          <Radio className="h-3.5 w-3.5 text-emerald-600" />
+          <span>Jonli monitoring</span>
+        </Link>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left: Details & Files */}
+        <div className="lg:col-span-1 space-y-6">
+          <SectionCard title="Imtihon sozlamalari">
+            <form onSubmit={handleSave} className="space-y-3">
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-slate-700">Imtihon nomi</label>
+                <input type="text" required
+                  className="w-full rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-900 focus:border-[#228BE6] focus:outline-none"
+                  value={title}
+                  onChange={(e) => { setTitle(e.target.value); setDirty(true) }} />
               </div>
-              <div className="flex-1">
-                <label className="mb-1.5 block text-sm font-medium" style={{ color: 'oklch(0.30 0.02 255)' }}>
-                  Holat
-                </label>
-                <select
-                  className="w-full rounded-xl border px-3.5 py-2.5 text-sm transition-shadow focus:outline-none focus:ring-2"
-                  style={{ borderColor: 'oklch(0.90 0.01 255)', color: 'oklch(0.15 0.02 255)', '--tw-ring-color': 'oklch(0.73 0.12 255)' }}
-                  value={status}
-                  onChange={(e) => { setStatus(e.target.value); setDirty(true) }}>
-                  {STATUS_OPTIONS.map((s) => (
-                    <option key={s.value} value={s.value}>{s.label}</option>
-                  ))}
-                </select>
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-slate-700">Tavsif</label>
+                <textarea rows={3}
+                  className="w-full rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-900 focus:border-[#228BE6] focus:outline-none"
+                  value={description}
+                  onChange={(e) => { setDescription(e.target.value); setDirty(true) }} />
               </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="mb-1 block text-xs font-semibold text-slate-700">Davomiyligi (m)</label>
+                  <input type="number" required min={1}
+                    className="w-full rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-900 focus:border-[#228BE6] focus:outline-none"
+                    value={duration}
+                    onChange={(e) => { setDuration(e.target.value); setDirty(true) }} />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold text-slate-700">Holat</label>
+                  <select
+                    className="w-full rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-900 focus:border-[#228BE6] focus:outline-none"
+                    value={status}
+                    onChange={(e) => { setStatus(e.target.value); setDirty(true) }}>
+                    {STATUS_OPTIONS.map((s) => (
+                      <option key={s.value} value={s.value}>{s.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <button type="submit" disabled={!dirty || updateExam.isPending}
+                className="w-full rounded bg-[#228BE6] py-2 text-xs font-semibold text-white hover:bg-[#1C7ED6] disabled:opacity-50 transition-colors">
+                {updateExam.isPending ? 'Saqlanmoqda...' : "Saqlash"}
+              </button>
+            </form>
+          </SectionCard>
+
+          <SectionCard title="Materiallar (Fayllar)">
+            <div className="mb-3">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".zip,.png,.jpg,.jpeg,.gif,.webp,.mp4,.webm,.mov,.avi,.pdf,.doc,.docx,.ppt,.pptx,.txt"
+                onChange={handleFileChange}
+                disabled={uploading}
+                className="block w-full text-xs text-slate-500 file:mr-2 file:cursor-pointer file:rounded file:border-0 file:bg-slate-100 file:px-2.5 file:py-1 file:text-xs file:font-semibold file:text-slate-700 hover:file:bg-slate-200"
+              />
+              {uploading && <p className="mt-1 text-xs font-medium text-[#228BE6]">Yuklanmoqda...</p>}
+              {uploadError && <p className="mt-1 text-xs font-semibold text-red-600">{uploadError}</p>}
             </div>
-            <button type="submit" disabled={!dirty || updateExam.isPending}
-              className="rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-all hover:brightness-110 disabled:opacity-50"
-              style={{ backgroundColor: 'oklch(0.55 0.18 255)' }}>
-              {updateExam.isPending ? 'Saqlanmoqda...' : "O'zgarishlarni saqlash"}
-            </button>
-          </form>
-        </SectionCard>
-
-        <SectionCard title="Imtihon materiallari va fayllari">
-          <div className="mb-4">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".zip,.png,.jpg,.jpeg,.gif,.webp,.mp4,.webm,.mov,.avi,.pdf,.doc,.docx,.ppt,.pptx,.txt"
-              onChange={handleFileChange}
-              disabled={uploading}
-              className="block w-full text-sm file:mr-3 file:cursor-pointer file:rounded-xl file:border-0 file:px-3.5 file:py-2 file:text-sm file:font-semibold file:text-white file:transition-all file:hover:brightness-110 file:bg-[oklch(0.55_0.18_255)]"
-            />
-            {uploading && <p className="mt-1.5 text-xs font-medium" style={{ color: 'oklch(0.55 0.18 255)' }}>Fayl yuklanmoqda...</p>}
-            {uploadError && <p className="mt-1.5 text-xs font-medium" style={{ color: 'oklch(0.55 0.17 30)' }}>{uploadError}</p>}
-            <p className="mt-2 text-xs" style={{ color: 'oklch(0.55 0.03 255)' }}>
-              Ruxsat etilgan: <strong>ZIP arxivlar, PNG / Rasmlar, Videolar (MP4, WebM, MOV)</strong>, PDF, Word, PowerPoint, Matn. Maksimal hajm: 100 MB.
-            </p>
-          </div>
-          {files && files.length > 0 ? (
-            <ul className="divide-y rounded-xl border p-1" style={{ borderColor: 'oklch(0.92 0.005 255)' }}>
-              {files.map((f) => {
-                const isImage = f.file_name.match(/\.(png|jpg|jpeg|gif|webp)$/i)
-                const isVideo = f.file_name.match(/\.(mp4|webm|mov|avi)$/i)
-                const isZip = f.file_name.match(/\.zip$/i)
-                const fileTypeLabel = isImage ? '[Rasm]' : isVideo ? '[Video]' : isZip ? '[ZIP]' : '[Hujjat]'
-                return (
-                  <li key={f.id} className="flex items-center justify-between px-3 py-2.5">
-                    <div className="flex items-center gap-2 truncate">
-                      <span className="text-xs font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-600">
-                        {fileTypeLabel}
-                      </span>
-                      <span className="truncate text-sm font-medium" style={{ color: 'oklch(0.25 0.02 255)' }}>
-                        {f.file_name}
-                      </span>
-                    </div>
+            {files && files.length > 0 ? (
+              <ul className="divide-y divide-slate-100 rounded border border-slate-200">
+                {files.map((f) => (
+                  <li key={f.id} className="flex items-center justify-between p-2">
+                    <span className="truncate text-xs font-semibold text-slate-800 max-w-[150px]">
+                      {f.file_name}
+                    </span>
                     <button
                       type="button"
                       onClick={() => handleDeleteFile(f)}
-                      className="shrink-0 cursor-pointer rounded-lg px-2.5 py-1 text-xs font-medium transition-colors hover:opacity-80"
-                      style={{ backgroundColor: 'oklch(0.93 0.05 30)', color: 'oklch(0.40 0.12 30)' }}
+                      className="cursor-pointer text-slate-400 hover:text-red-600"
+                      title="O'chirish"
                     >
-                      O'chirish
+                      <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </li>
-                )
-              })}
-            </ul>
-          ) : (
-            <p className="text-sm" style={{ color: 'oklch(0.65 0.02 255)' }}>Hali materiallar yuklanmagan.</p>
-          )}
-        </SectionCard>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-xs text-slate-400 italic">Materiallar biriktirilmagan.</p>
+            )}
+          </SectionCard>
+        </div>
 
-        <SectionCard title="Imtihon kodlari va kirish">
-          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm" style={{ color: 'oklch(0.55 0.03 255)' }}>
-              Talabalar imtihonni boshlash uchun ushbu 6 xonali kohni Talabalar sahifasida kiritadilar.
-            </p>
-            <button
-              type="button"
-              onClick={handleGenerateLink}
-              disabled={createLink.isPending}
-              className="cursor-pointer shrink-0 rounded-xl px-4 py-2 text-sm font-semibold text-white transition-all hover:brightness-110 disabled:opacity-50"
-              style={{ backgroundColor: 'oklch(0.55 0.18 255)' }}
-            >
-              {createLink.isPending ? 'Yaratilmoqda...' : '+ Yangi kod yaratish'}
-            </button>
-          </div>
-          {links && links.length > 0 ? (
-            <div className="space-y-3">
-              {links.map((link) => {
-                const expired = linkExpired(link)
-                const pinDisplay = link.token.length === 6 ? `${link.token.slice(0, 3)} - ${link.token.slice(3)}` : link.token
-                return (
-                  <div
-                    key={link.id}
-                    className="flex flex-col gap-3 rounded-2xl border p-4 sm:flex-row sm:items-center sm:justify-between"
-                    style={{
-                      borderColor: expired ? 'oklch(0.90 0.08 30)' : 'oklch(0.90 0.03 255)',
-                      backgroundColor: expired ? 'oklch(0.98 0.02 30)' : 'oklch(0.985 0.005 255)',
-                    }}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                          Imtihon kodi:
-                        </span>
-                        <span className="font-mono text-2xl font-black tracking-wider" style={{ color: expired ? 'oklch(0.50 0.12 30)' : 'oklch(0.40 0.18 255)' }}>
-                          {pinDisplay}
-                        </span>
-                        {expired ? (
-                          <span className="rounded-full px-2.5 py-0.5 text-xs font-semibold" style={{ backgroundColor: 'oklch(0.93 0.05 30)', color: 'oklch(0.40 0.12 30)' }}>
-                            Muddati o'tgan
+        {/* Right: Room PIN Links & Submissions */}
+        <div className="lg:col-span-2 space-y-6">
+          <SectionCard title="Imtihon kodlari (Room PIN)">
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-xs text-slate-500">
+                Talabalar ushbu 6 xonali PIN kod orqali imtihonga kirishadi.
+              </p>
+              <button
+                type="button"
+                onClick={handleGenerateLink}
+                disabled={createLink.isPending}
+                className="cursor-pointer rounded bg-[#228BE6] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#1C7ED6] disabled:opacity-50"
+              >
+                + Yangi PIN
+              </button>
+            </div>
+            {links && links.length > 0 ? (
+              <div className="space-y-2">
+                {links.map((link) => {
+                  const expired = linkExpired(link)
+                  const pinDisplay = link.token.length === 6 ? `${link.token.slice(0, 3)} - ${link.token.slice(3)}` : link.token
+                  return (
+                    <div
+                      key={link.id}
+                      className={`flex items-center justify-between p-3 rounded border ${
+                        expired ? 'bg-amber-50/50 border-amber-200' : 'bg-slate-50/50 border-slate-200'
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xl font-bold text-slate-900 tracking-wider">
+                            {pinDisplay}
                           </span>
-                        ) : (
-                          <span className="rounded-full px-2.5 py-0.5 text-xs font-semibold" style={{ backgroundColor: 'oklch(0.92 0.05 145)', color: 'oklch(0.35 0.10 145)' }}>
-                            Faol
-                          </span>
-                        )}
-                      </div>
-                      <p className="mt-1 text-xs" style={{ color: 'oklch(0.60 0.02 255)' }}>
-                        Yaratilgan: {formatDate(link.created_at)}
-                        {link.expires_at && <> &bull; Tugash vaqti: <strong className="font-medium">{formatDate(link.expires_at)}</strong></>}
-                      </p>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2">
-                      {showLinkExpiry === link.id ? (
-                        <div className="flex items-center gap-1.5">
-                          <input
-                            type="datetime-local"
-                            className="rounded-lg border px-2 py-1.5 text-xs"
-                            style={{ borderColor: 'oklch(0.90 0.01 255)' }}
-                            value={expiryInput}
-                            onChange={(e) => setExpiryInput(e.target.value)}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleSaveExpiry(link)}
-                            className="cursor-pointer rounded-lg px-2.5 py-1.5 text-xs font-medium text-white"
-                            style={{ backgroundColor: 'oklch(0.55 0.18 255)' }}
-                          >
-                            Saqlash
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => { setShowLinkExpiry(null); setExpiryInput('') }}
-                            className="cursor-pointer rounded-lg px-2.5 py-1.5 text-xs font-medium"
-                            style={{ backgroundColor: 'oklch(0.93 0.01 255)', color: 'oklch(0.45 0.02 255)' }}
-                          >
-                            Bekor qilish
-                          </button>
+                          {expired ? (
+                            <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">
+                              Muddati o'tgan
+                            </span>
+                          ) : (
+                            <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800">
+                              Faol
+                            </span>
+                          )}
                         </div>
-                      ) : (
+                        <p className="text-[10px] text-slate-400 mt-0.5">
+                          Yaratilgan: {formatDate(link.created_at)}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => {
-                            setShowLinkExpiry(link.id)
-                            setExpiryInput(link.expires_at ? new Date(link.expires_at).toISOString().slice(0, 16) : '')
-                          }}
-                          className="cursor-pointer rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors hover:opacity-80"
-                          style={{ backgroundColor: 'oklch(0.93 0.03 255)', color: 'oklch(0.35 0.08 255)' }}
+                          onClick={() => handleCopyLink(link)}
+                          className="cursor-pointer rounded bg-[#FABB00] px-2.5 py-1 text-xs font-semibold text-slate-900 hover:brightness-95 flex items-center gap-1"
                         >
-                          {link.expires_at ? "Muddati o'zgartirish" : 'Muddati belgilash'}
+                          <Copy className="h-3 w-3" />
+                          <span>{copiedId === link.id ? 'Nusxalandi!' : 'Kodni nusxalash'}</span>
                         </button>
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={() => handleCopyLink(link)}
-                        className="cursor-pointer rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-all hover:brightness-110"
-                        style={{ backgroundColor: 'oklch(0.55 0.18 255)' }}
-                      >
-                        {copiedId === link.id ? 'Nusxalandi!' : 'Kodni nusxalash'}
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteLink(link)}
-                        className="cursor-pointer rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors hover:opacity-80"
-                        style={{ backgroundColor: 'oklch(0.93 0.05 30)', color: 'oklch(0.40 0.12 30)' }}
-                      >
-                        O'chirish
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteLink(link)}
+                          className="cursor-pointer p-1 text-slate-400 hover:text-red-600"
+                          title="O'chirish"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                )
-              })}
-            </div>
-          ) : (
-            <p className="text-sm" style={{ color: 'oklch(0.65 0.02 255)' }}>Hali imtihon kodi yaratilmagan.</p>
-          )}
-        </SectionCard>
+                  )
+                })}
+              </div>
+            ) : (
+              <p className="text-xs text-slate-400 italic">Hali kirish kodi yaratilmagan.</p>
+            )}
+          </SectionCard>
 
-        <SectionCard title="Topshirilgan ishlar">
-          <div className="mb-4 flex flex-wrap items-center gap-3">
-            <select className="rounded-xl border px-3 py-2 text-xs font-medium"
-              style={{ borderColor: 'oklch(0.90 0.01 255)', color: 'oklch(0.35 0.02 255)' }}
-              value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-              <option value="all">Barcha holatlar</option>
-              <option value="in_progress">Bajarilmoqda</option>
-              <option value="submitted">Topshirildi</option>
-              <option value="expired">Muddati o'tgan</option>
-            </select>
-            <select className="rounded-xl border px-3 py-2 text-xs font-medium"
-              style={{ borderColor: 'oklch(0.90 0.01 255)', color: 'oklch(0.35 0.02 255)' }}
-              value={gradeFilter} onChange={(e) => setGradeFilter(e.target.value)}>
-              <option value="all">Barcha baholar</option>
-              <option value="graded">Baholangan</option>
-              <option value="ungraded">Baholanmagan</option>
-            </select>
-            <select className="rounded-xl border px-3 py-2 text-xs font-medium"
-              style={{ borderColor: 'oklch(0.90 0.01 255)', color: 'oklch(0.35 0.02 255)' }}
-              value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-              <option value="submitted_at">Sana bo'yicha</option>
-              <option value="student_name">Ism bo'yicha</option>
-            </select>
-          </div>
-
-          {subsLoading ? (
-            <div className="flex items-center gap-2 py-6 text-sm" style={{ color: 'oklch(0.55 0.03 255)' }}>
-              <span className="inline-block h-4 w-4 animate-spin rounded-full border-2" style={{ borderColor: 'oklch(0.82 0.08 255)', borderTopColor: 'oklch(0.55 0.18 255)' }} />
-              Topshiriqlar yuklanmoqda...
+          <SectionCard title="Topshirilgan ishlar va Baholash">
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <select className="rounded border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-700"
+                value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+                <option value="all">Barcha holatlar</option>
+                <option value="in_progress">Bajarilmoqda</option>
+                <option value="submitted">Topshirildi</option>
+                <option value="expired">Muddati o'tgan</option>
+              </select>
+              <select className="rounded border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-700"
+                value={gradeFilter} onChange={(e) => setGradeFilter(e.target.value)}>
+                <option value="all">Barcha baholar</option>
+                <option value="graded">Baholangan</option>
+                <option value="ungraded">Baholanmagan</option>
+              </select>
             </div>
-          ) : filtered.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left text-xs font-medium" style={{ borderColor: 'oklch(0.92 0.005 255)', color: 'oklch(0.55 0.03 255)' }}>
-                    <th className="pb-2.5 pr-4 font-medium">Talaba</th>
-                    <th className="pb-2.5 pr-4 font-medium">Holat</th>
-                    <th className="pb-2.5 pr-4 font-medium">Topshirilgan vaqt</th>
-                    <th className="pb-2.5 pr-4 font-medium">Topshiriq fayli</th>
-                    <th className="pb-2.5 font-medium">Baho</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y" style={{ borderColor: 'oklch(0.92 0.005 255)' }}>
-                  {filtered.map((sub) => (
-                    <tr key={sub.id} className="transition-colors hover:bg-[oklch(0.975_0.005_255)]">
-                      <td className="py-3 pr-4 font-medium" style={{ color: 'oklch(0.20 0.07 255)' }}>
-                        {sub.student_name}
-                      </td>
-                      <td className="py-3 pr-4"><StatusBadge status={sub.status} /></td>
-                      <td className="py-3 pr-4 text-sm" style={{ color: 'oklch(0.55 0.03 255)' }}>
-                        {sub.submitted_at ? formatDate(sub.submitted_at) : '\u2014'}
-                      </td>
-                      <td className="py-3 pr-4">
-                        {sub.file_path ? (
-                          <button type="button" onClick={() => handleDownloadZip(sub)}
-                            className="cursor-pointer rounded-lg px-3 py-1.5 text-xs font-medium text-white transition-all hover:brightness-110"
-                            style={{ backgroundColor: 'oklch(0.55 0.18 255)' }}>
-                            Yuklab olish
-                          </button>
-                        ) : (
-                          <span className="text-xs" style={{ color: 'oklch(0.65 0.02 255)' }}>{'\u2014'}</span>
-                        )}
-                      </td>
-                      <td className="py-3">
-                        <GradeCell submission={sub} onGrade={handleGrade} />
-                      </td>
+
+            {subsLoading ? (
+              <div className="py-6 text-center text-xs text-slate-400">Topshiriqlar yuklanmoqda...</div>
+            ) : filtered.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-200 text-slate-500 font-semibold uppercase tracking-wider text-[10px]">
+                      <th className="pb-2 pr-4">Talaba</th>
+                      <th className="pb-2 pr-4">Holat</th>
+                      <th className="pb-2 pr-4">Vaqt</th>
+                      <th className="pb-2 pr-4">Fayl</th>
+                      <th className="pb-2">Baho</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p className="py-6 text-sm" style={{ color: 'oklch(0.65 0.02 255)' }}>
-              {submissions && submissions.length > 0
-                ? 'Filtrga mos keladigan topshiriqlar topilmadi.'
-                : 'Hali topshiriqlar yuklanmagan.'}
-            </p>
-          )}
-        </SectionCard>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filtered.map((sub) => (
+                      <tr key={sub.id} className="hover:bg-slate-50/60">
+                        <td className="py-2.5 pr-4 font-semibold text-slate-900">{sub.student_name}</td>
+                        <td className="py-2.5 pr-4"><StatusBadge status={sub.status} /></td>
+                        <td className="py-2.5 pr-4 text-xs text-slate-500">{sub.submitted_at ? formatDate(sub.submitted_at) : '\u2014'}</td>
+                        <td className="py-2.5 pr-4">
+                          {sub.file_path ? (
+                            <button type="button" onClick={() => handleDownloadZip(sub)}
+                              className="cursor-pointer rounded bg-slate-900 px-2 py-1 text-xs font-semibold text-white hover:bg-slate-800 inline-flex items-center gap-1">
+                              <Download className="h-3 w-3" />
+                              Yuklab olish (.zip)
+                            </button>
+                          ) : (
+                            <span className="text-xs text-slate-300">&mdash;</span>
+                          )}
+                        </td>
+                        <td className="py-2.5">
+                          <GradeCell submission={sub} onGrade={handleGrade} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="py-4 text-xs text-slate-400 text-center italic">Topshiriqlar topilmadi.</p>
+            )}
+          </SectionCard>
+        </div>
       </div>
     </div>
   )

@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import SunLogo from '../components/SunLogo'
+import { LogIn, ArrowRight } from 'lucide-react'
 
 export default function Login() {
   const { signIn } = useAuth()
@@ -28,101 +30,101 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center px-4" style={{ backgroundColor: 'oklch(0.97 0.005 255)' }}>
-      <div className="mb-6 w-full max-w-sm flex items-center justify-between">
-        <Link
-          to="/"
-          className="flex items-center gap-2 text-sm font-semibold transition-colors hover:opacity-80"
-          style={{ color: 'oklch(0.55 0.18 255)' }}
-        >
-          &larr; Talabalar sahifasi
-        </Link>
-        <span className="rounded-full px-3 py-1 text-xs font-medium" style={{ backgroundColor: 'oklch(0.92 0.05 145)', color: 'oklch(0.35 0.10 145)' }}>
-          O'qituvchilar bo'limi
-        </span>
-      </div>
+    <div className="flex min-h-screen flex-col bg-[#FAFAFA] font-sans text-slate-900">
+      {/* Header */}
+      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white px-4 py-3 sm:px-8">
+        <div className="mx-auto flex max-w-6xl items-center justify-between">
+          <Link to="/" className="flex items-center gap-2">
+            <SunLogo className="h-7 w-7 text-[#FABB00]" />
+            <span className="text-lg font-bold tracking-tight text-slate-900">
+              ILMLA <span className="text-[#FABB00]">Exam</span>
+            </span>
+          </Link>
 
-      <div className="animate-slide-up w-full max-w-sm">
-        <div className="mb-8 text-center">
-          <span className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl text-2xl font-bold text-white shadow-md" style={{ backgroundColor: 'oklch(0.55 0.18 255)' }}>
-            E
+          <span className="rounded bg-slate-100 border border-slate-200 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
+            O'qituvchilar bo'limi
           </span>
-          <h1 className="text-2xl font-bold" style={{ color: 'oklch(0.15 0.02 255)' }}>
-            O'qituvchilar uchun kirish
-          </h1>
-          <p className="mt-1.5 text-sm" style={{ color: 'oklch(0.55 0.03 255)' }}>
-            Imtihonlarni boshqarish va talabalar topshiriqlarini baholash
-          </p>
         </div>
+      </header>
 
-        <form
-          onSubmit={handleSubmit}
-          className="rounded-2xl border bg-white p-6 shadow-md sm:p-8"
-          style={{ borderColor: 'oklch(0.92 0.005 255)' }}
-        >
-          {error && (
-            <p
-              className="mb-4 animate-fade-in rounded-xl p-3 text-sm text-red-700"
-              style={{ backgroundColor: 'oklch(0.93 0.05 30)' }}
-            >
-              {error}
-            </p>
-          )}
-
+      {/* Main Login Card */}
+      <main className="flex flex-1 items-center justify-center px-4 py-12">
+        <div className="w-full max-w-sm animate-fade-in">
           <div className="mb-4">
-            <label className="mb-1.5 block text-sm font-medium" style={{ color: 'oklch(0.30 0.02 255)' }}>
-              Elektron pochta (Email)
-            </label>
-            <input
-              type="email"
-              required
-              className="w-full rounded-xl border px-3.5 py-2.5 text-sm transition-shadow focus:outline-none focus:ring-2"
-              style={{
-                borderColor: 'oklch(0.90 0.01 255)',
-                color: 'oklch(0.15 0.02 255)',
-                '--tw-ring-color': 'oklch(0.73 0.12 255)',
-              }}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="oqituvchi@maktab.uz"
-            />
+            <Link
+              to="/"
+              className="inline-flex items-center gap-1 text-xs font-semibold text-[#228BE6] hover:underline"
+            >
+              &larr; Talabalar sahifasiga qaytish
+            </Link>
           </div>
 
-          <div className="mb-6">
-            <label className="mb-1.5 block text-sm font-medium" style={{ color: 'oklch(0.30 0.02 255)' }}>
-              Parol
-            </label>
-            <input
-              type="password"
-              required
-              className="w-full rounded-xl border px-3.5 py-2.5 text-sm transition-shadow focus:outline-none focus:ring-2"
-              style={{
-                borderColor: 'oklch(0.90 0.01 255)',
-                color: 'oklch(0.15 0.02 255)',
-                '--tw-ring-color': 'oklch(0.73 0.12 255)',
-              }}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Parolingizni kiriting"
-            />
-          </div>
+          <div className="rounded-lg border border-slate-200 bg-white p-6 sm:p-8">
+            <div className="mb-6 text-center">
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-md bg-amber-50 border border-amber-200">
+                <SunLogo className="h-7 w-7 text-[#FABB00]" />
+              </div>
+              <h1 className="text-xl font-bold text-slate-900">
+                Tizimga kirish
+              </h1>
+              <p className="mt-1 text-xs text-slate-500">
+                O'qituvchilar uchun imtihonlarni boshqarish portali
+              </p>
+            </div>
 
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full rounded-xl py-3 text-sm font-semibold text-white transition-all hover:brightness-110 shadow-sm disabled:opacity-50"
-            style={{ backgroundColor: 'oklch(0.55 0.18 255)' }}
-          >
-            {submitting ? 'Kirish tekshirilmoqda...' : 'Tizimga kirish'}
-          </button>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {error && (
+                <div className="rounded border border-red-200 bg-red-50 p-3 text-center text-xs font-medium text-red-600">
+                  {error}
+                </div>
+              )}
 
-          <div className="mt-6 rounded-xl p-3 text-center" style={{ backgroundColor: 'oklch(0.97 0.005 255)' }}>
-            <p className="text-xs" style={{ color: 'oklch(0.60 0.02 255)' }}>
-              Yangi o'qituvchilarni ro'yxatdan o'tkazish cheklangan. Kirish huquqini olish uchun administratorga murojaat qiling.
-            </p>
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-slate-700">
+                  Elektron pochta (Email)
+                </label>
+                <input
+                  type="email"
+                  required
+                  className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-900 focus:border-[#228BE6] focus:outline-none"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="oqituvchi@maktab.uz"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-slate-700">
+                  Parol
+                </label>
+                <input
+                  type="password"
+                  required
+                  className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-900 focus:border-[#228BE6] focus:outline-none"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Parolingizni kiriting"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full cursor-pointer rounded bg-[#228BE6] py-2.5 text-xs font-bold text-white hover:bg-[#1C7ED6] disabled:opacity-50 transition-colors inline-flex items-center justify-center gap-1.5"
+              >
+                <LogIn className="h-3.5 w-3.5" />
+                <span>{submitting ? 'Kirish tekshirilmoqda...' : 'Kirish'}</span>
+              </button>
+
+              <div className="mt-4 rounded bg-slate-50 p-3 text-center border border-slate-100">
+                <p className="text-[11px] text-slate-500">
+                  Kirish huquqiga ega bo'lmasangiz, maktab administratsiyasiga murojaat qining.
+                </p>
+              </div>
+            </form>
           </div>
-        </form>
-      </div>
+        </div>
+      </main>
     </div>
   )
 }

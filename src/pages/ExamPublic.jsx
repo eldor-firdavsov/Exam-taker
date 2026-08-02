@@ -1,20 +1,24 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../components/Toast'
+import SunLogo from '../components/SunLogo'
+import { Clock, CheckCircle2, AlertTriangle, Download, Upload, FileText, ArrowRight } from 'lucide-react'
 
 const STORAGE_KEY = 'exam-taker:sub'
 
 function getStoredSession(token) {
-  try { return JSON.parse(sessionStorage.getItem(`${STORAGE_KEY}:${token}`)) }
-  catch { return null }
+  try {
+    const raw = localStorage.getItem(`${STORAGE_KEY}:${token}`)
+    return raw ? JSON.parse(raw) : null
+  } catch { return null }
 }
 function setStoredSession(token, data) {
-  sessionStorage.setItem(`${STORAGE_KEY}:${token}`, JSON.stringify(data))
+  localStorage.setItem(`${STORAGE_KEY}:${token}`, JSON.stringify(data))
 }
 function removeStoredSession(token) {
-  sessionStorage.removeItem(`${STORAGE_KEY}:${token}`)
+  localStorage.removeItem(`${STORAGE_KEY}:${token}`)
 }
 
 function formatCountdown(ms) {
@@ -62,24 +66,37 @@ export default function ExamPublic() {
     retry: false,
   })
 
+  // Restore stored session immediately on mount / refresh from localStorage
   useEffect(() => {
-    if (!token || !exam) return
+    if (!token) return
     const stored = getStoredSession(token)
     if (!stored) return
-    ;(async () => {
+
+    setSubmissionId(stored.submissionId)
+    if (stored.deadlineAt) setDeadlineAt(stored.deadlineAt)
+
+    const fetchLatestSubmission = async () => {
       const { data, error } = await supabase.functions.invoke('get-submission', {
         body: { submission_id: stored.submissionId },
       })
       if (error || !data || data.error) {
         removeStoredSession(token)
+        setSubmissionId(null)
         return
       }
       setSubmissionId(data.id)
       setDeadlineAt(data.deadline_at)
       setSubStatus(data.status)
       setStudentName(data.student_name)
-    })()
-  }, [token, exam])
+
+      // Update localStorage with fresh data
+      setStoredSession(token, { submissionId: data.id, deadlineAt: data.deadline_at, status: data.status })
+    }
+
+    fetchLatestSubmission()
+    const pollId = setInterval(fetchLatestSubmission, 8000)
+    return () => clearInterval(pollId)
+  }, [token])
 
   useEffect(() => {
     if (subStatus !== 'in_progress') return
@@ -94,7 +111,6 @@ export default function ExamPublic() {
     }
   }, [subStatus, deadlineAt, now])
 
-  // Signed URLs map for inline media preview (images & videos)
   const [mediaUrls, setMediaUrls] = useState({})
 
   useEffect(() => {
@@ -139,7 +155,8 @@ export default function ExamPublic() {
     setDeadlineAt(data.deadline_at)
     setSubStatus('in_progress')
     setNow(Date.now())
-    setStoredSession(token, { submissionId: data.submission_id, deadlineAt: data.deadline_at })
+    // Persist to localStorage so hard-refresh keeps student in their active exam
+    setStoredSession(token, { submissionId: data.submission_id, deadlineAt: data.deadline_at, status: 'in_progress' })
     toast("Imtihon boshlandi! Vaqt hisoblanmoqda.", 'success')
   }
 
@@ -179,33 +196,28 @@ export default function ExamPublic() {
     }
     setSubStatus('submitted')
     setSelectedFile(null)
-    removeStoredSession(token)
+    setStoredSession(token, { submissionId, deadlineAt, status: 'submitted' })
     toast("Imtihon muvaffaqiyatli topshirildi!", 'success')
   }
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 font-sans">
-        <div className="flex items-center gap-3 rounded-2xl bg-white px-6 py-4 shadow-sm border border-slate-200 text-sm font-medium text-slate-600">
-          <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-          Yuklanmoqda...
-        </div>
+      <div className="flex min-h-screen items-center justify-center bg-[#F1F5F9] font-sans">
+        <div className="text-xs font-semibold text-slate-600">Yuklanmoqda...</div>
       </div>
     )
   }
 
   if (error || !exam) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 font-sans">
-        <div className="animate-scale-in w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-xl shadow-slate-200/50">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-2xl text-red-600">
-            &#9888;
-          </div>
-          <h1 className="mb-2 text-xl font-bold text-slate-900">
+      <div className="flex min-h-screen items-center justify-center bg-[#F1F5F9] px-4 font-sans">
+        <div className="w-full max-w-sm rounded-lg border border-slate-300 bg-white p-6 text-center shadow-2xs">
+          <AlertTriangle className="mx-auto h-8 w-8 text-amber-500 mb-2" />
+          <h1 className="mb-1 text-base font-bold text-slate-900">
             Imtihon kodi noto'g'ri
           </h1>
-          <p className="text-sm text-slate-500 leading-relaxed">
-            Ushbu imtihon kodi mavjud emas. Kodning to'g'riligini tekshirib, qaytadan kiriting.
+          <p className="text-xs text-slate-600">
+            Ushbu imtihon kodi mavjud emas. Kodni tekshirib qaytadan kiriting.
           </p>
         </div>
       </div>
@@ -217,32 +229,26 @@ export default function ExamPublic() {
   const isUrgent = countdownMs > 0 && countdownMs <= 300_000
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
-      {/* Top Header */}
-      <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/80 backdrop-blur-md px-4 py-3 sm:px-8">
+    <div className="min-h-screen bg-[#F1F5F9] font-sans text-slate-900">
+      {/* Header */}
+      <header className="sticky top-0 z-30 border-b border-slate-300 bg-white px-4 py-3 sm:px-8 shadow-2xs">
         <div className="mx-auto flex max-w-3xl items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 font-bold text-white shadow-sm">
-              E
+          <Link to="/" className="flex items-center gap-2">
+            <SunLogo className="h-7 w-7 text-[#FABB00]" />
+            <span className="text-lg font-bold tracking-tight text-slate-900">
+              ILMLA <span className="text-[#FABB00]">Exam</span>
             </span>
-            <div>
-              <span className="text-base font-bold text-slate-900 block leading-none">
-                Exam Taker
-              </span>
-              <span className="text-[11px] text-slate-500 font-medium">
-                Talaba seansi
-              </span>
-            </div>
-          </div>
+          </Link>
 
           {submissionId && !isFinished && (
-            <div className={`flex items-center gap-2 rounded-2xl px-4 py-1.5 border transition-all ${
+            <div className={`flex items-center gap-1.5 rounded border px-3 py-1 text-xs font-bold ${
               isUrgent
-                ? 'bg-red-50 border-red-200 text-red-600 animate-pulse-soft'
-                : 'bg-blue-50 border-blue-100 text-blue-900'
+                ? 'bg-red-50 border-red-300 text-red-700'
+                : 'bg-blue-50 border-blue-300 text-[#228BE6]'
             }`}>
-              <span className="text-xs font-semibold">Qolgan vaqt:</span>
-              <span className="font-mono text-base font-extrabold tabular-nums">
+              <Clock className="h-3.5 w-3.5" />
+              <span>Qolgan vaqt:</span>
+              <span className="font-mono font-extrabold text-sm">
                 {countdownMs > 0 ? formatCountdown(countdownMs) : '0:00'}
               </span>
             </div>
@@ -250,227 +256,210 @@ export default function ExamPublic() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl px-4 py-8 sm:py-12">
-        <div className="animate-fade-in space-y-6">
-          {/* Exam Info Card */}
-          <div className="rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-8 shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
-              <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
-                {exam.title}
-              </h1>
-              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-                {exam.duration_minutes} daqiqa
-              </span>
-            </div>
-            {exam.description && (
-              <p className="text-sm text-slate-600 leading-relaxed">
-                {exam.description}
-              </p>
-            )}
+      <main className="mx-auto max-w-3xl px-4 py-8 space-y-6">
+        <div className="rounded-lg border border-slate-300 bg-white p-6 shadow-2xs">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <h1 className="text-xl font-extrabold text-slate-900">
+              {exam.title}
+            </h1>
+            <span className="rounded bg-slate-100 border border-slate-300 px-2.5 py-0.5 text-xs font-bold text-slate-800">
+              {exam.duration_minutes} daqiqa
+            </span>
+          </div>
+          {exam.description && (
+            <p className="text-xs text-slate-600 font-medium">
+              {exam.description}
+            </p>
+          )}
 
-            {!submissionId ? (
-              <div className="mt-8 border-t border-slate-100 pt-6">
-                <div className="mb-6 rounded-2xl bg-blue-50/70 p-4 border border-blue-100/60">
-                  <p className="text-xs sm:text-sm text-blue-900 leading-relaxed font-medium">
-                    Ism va familiyangizni kiriting va <strong>Imtihonni boshlash</strong> tugmasini bosing. Vaqt hisobi darhol boshlanadi.
-                  </p>
+          {!submissionId ? (
+            <div className="mt-6 border-t border-slate-200 pt-5">
+              <div className="mb-4 rounded bg-blue-50 p-3 border border-blue-200 text-xs text-[#228BE6] font-semibold">
+                Ismingizni kiriting va <strong>Imtihonni boshlash</strong> tugmasini bosing. Vaqt darhol boshlanadi.
+              </div>
+
+              {actionError && (
+                <div className="mb-3 rounded border border-red-300 bg-red-50 p-3 text-xs font-semibold text-red-700">
+                  {actionError}
+                </div>
+              )}
+
+              <form onSubmit={handleStart} className="space-y-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    To'liq ism va familiyangiz
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Masalan: Ali Valiyev"
+                    className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-900 focus:border-[#228BE6] focus:outline-none"
+                    value={studentName}
+                    onChange={(e) => setStudentName(e.target.value)}
+                  />
                 </div>
 
+                <button
+                  type="submit"
+                  disabled={starting}
+                  className="w-full cursor-pointer rounded bg-[#228BE6] py-2.5 text-xs font-bold text-white hover:bg-[#1C7ED6] disabled:opacity-50 inline-flex items-center justify-center gap-1.5 shadow-2xs"
+                >
+                  <span>{starting ? 'Boshlanmoqda...' : 'Imtihonni boshlash'}</span>
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </button>
+              </form>
+            </div>
+          ) : isFinished ? (
+            <div className="mt-6 border-t border-slate-200 pt-6 text-center">
+              {subStatus === 'submitted' ? (
+                <div className="py-2">
+                  <CheckCircle2 className="mx-auto h-10 w-10 text-emerald-600 mb-2" />
+                  <h3 className="text-base font-bold text-slate-900 mb-1">
+                    Imtihon muvaffaqiyatli topshirildi
+                  </h3>
+                  <p className="text-xs font-medium text-slate-600">
+                    Javoblaringiz va faylingiz o'qituvchiga yuborildi.
+                  </p>
+                </div>
+              ) : (
+                <div className="py-2">
+                  <Clock className="mx-auto h-10 w-10 text-amber-600 mb-2" />
+                  <h3 className="text-base font-bold text-slate-900 mb-1">
+                    Imtihon vaqti tugadi
+                  </h3>
+                  <p className="text-xs font-medium text-slate-600">
+                    Ushbu imtihon seansi uchun ajratilgan vaqt nihoyasiga yetdi.
+                  </p>
+                </div>
+              )}
+            </div>
+          ) : null}
+        </div>
+
+        {/* Active Exam Section */}
+        {submissionId && !isFinished && (
+          <div className="space-y-6">
+            {/* Materials Card */}
+            <div className="rounded-lg border border-slate-300 bg-white p-6 shadow-2xs">
+              <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-900 mb-3 flex items-center justify-between">
+                <span>Imtihon materiallari</span>
+                <span className="text-slate-500 font-medium">
+                  {files ? `${files.length} ta fayl` : ''}
+                </span>
+              </h2>
+
+              {files && files.length > 0 ? (
+                <div className="space-y-3">
+                  {files.map((f) => {
+                    const isImage = f.file_name.match(/\.(png|jpg|jpeg|gif|webp)$/i)
+                    const isVideo = f.file_name.match(/\.(mp4|webm|mov|avi)$/i)
+                    const src = mediaUrls[f.id]
+
+                    return (
+                      <div
+                        key={f.id}
+                        className="rounded border border-slate-300 bg-slate-50 p-3"
+                      >
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <span className="truncate text-xs font-bold text-slate-900">
+                            {f.file_name}
+                          </span>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDownload(f)}
+                            className="cursor-pointer shrink-0 rounded bg-slate-900 px-3 py-1 text-xs font-bold text-white hover:bg-slate-800 inline-flex items-center gap-1 shadow-2xs"
+                          >
+                            <Download className="h-3 w-3" />
+                            Yuklab olish
+                          </button>
+                        </div>
+
+                        {isImage && src && (
+                          <div className="mt-2 overflow-hidden rounded border border-slate-300 bg-white p-1">
+                            <img
+                              src={src}
+                              alt={f.file_name}
+                              className="max-h-80 w-full object-contain rounded cursor-pointer"
+                              onClick={() => handleDownload(f)}
+                            />
+                          </div>
+                        )}
+
+                        {isVideo && src && (
+                          <div className="mt-2 overflow-hidden rounded bg-black">
+                            <video
+                              controls
+                              controlsList="nodownload"
+                              src={src}
+                              className="max-h-80 w-full rounded"
+                            >
+                              Brauzeringiz HTML5 videoni qo'llab-quvvatlamaydi.
+                            </video>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <p className="text-xs text-slate-500 italic">
+                  O'qituvchi tomonidan materiallar biriktirilmagan.
+                </p>
+              )}
+            </div>
+
+            {/* Submit Solution Card */}
+            <div className="rounded-lg border border-slate-300 bg-white p-6 shadow-2xs">
+              <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-900 mb-1">
+                Javobingizni topshirish (.zip fayl)
+              </h2>
+              <p className="text-xs text-slate-600 font-medium mb-4">
+                Barcha kodingizni va javoblaringizni bitta <strong>.zip</strong> arxivga solib yuklang.
+              </p>
+
+              <form onSubmit={handleSubmit} className="space-y-3">
+                <input
+                  type="file"
+                  accept=".zip"
+                  required
+                  onChange={handleFileSelect}
+                  className="block w-full text-xs text-slate-600 file:mr-3 file:cursor-pointer file:rounded file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-slate-800 hover:file:bg-slate-200"
+                />
+
+                {selectedFile && !fileError && (
+                  <div className="rounded bg-emerald-50 p-2.5 text-xs font-bold text-emerald-800 border border-emerald-300 flex items-center justify-between">
+                    <span>{selectedFile.name}</span>
+                    <span className="font-normal text-emerald-700">
+                      {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
+                    </span>
+                  </div>
+                )}
+
+                {fileError && (
+                  <div className="text-xs font-bold text-red-600">
+                    {fileError}
+                  </div>
+                )}
+
                 {actionError && (
-                  <div className="animate-fade-in mb-4 rounded-2xl bg-red-50 p-4 text-xs font-semibold text-red-600 border border-red-100">
+                  <div className="text-xs font-bold text-red-600">
                     {actionError}
                   </div>
                 )}
 
-                <form onSubmit={handleStart} className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                      To'liq ism va familiyangiz
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="Masalan: Ali Valiyev"
-                      className="w-full rounded-2xl border-2 border-slate-200 bg-slate-50/50 px-4 py-3.5 text-sm font-semibold text-slate-900 transition-all focus:border-blue-600 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-100"
-                      value={studentName}
-                      onChange={(e) => setStudentName(e.target.value)}
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={starting}
-                    className="w-full rounded-2xl bg-blue-600 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-600/30 transition-all hover:bg-blue-700 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50"
-                  >
-                    {starting ? 'Boshlanmoqda...' : 'Imtihonni boshlash \u2192'}
-                  </button>
-                </form>
-              </div>
-            ) : isFinished ? (
-              <div className="mt-8 border-t border-slate-100 pt-8 text-center">
-                {subStatus === 'submitted' ? (
-                  <div className="animate-scale-in py-4">
-                    <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-emerald-50 text-2xl text-emerald-600 border border-emerald-100 shadow-sm">
-                      &#10003;
-                    </div>
-                    <h3 className="mb-2 text-xl font-bold text-slate-900">
-                      Imtihon muvaffaqiyatli topshirildi
-                    </h3>
-                    <p className="text-sm text-slate-500 max-w-md mx-auto">
-                      Javoblaringiz va faylingiz o'qituvchiga yuborildi. Sahifani yopishingiz mumkin.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="animate-scale-in py-4">
-                    <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-amber-50 text-2xl text-amber-600 border border-amber-100 shadow-sm">
-                      &#9200;
-                    </div>
-                    <h3 className="mb-2 text-xl font-bold text-slate-900">
-                      Imtihon vaqti tugadi
-                    </h3>
-                    <p className="text-sm text-slate-500 max-w-md mx-auto">
-                      Ushbu imtihon seansi uchun ajratilgan vaqt nihoyasiga yetdi.
-                    </p>
-                  </div>
-                )}
-              </div>
-            ) : null}
-          </div>
-
-          {/* Active Exam Section: Materials & Submissions */}
-          {submissionId && !isFinished && (
-            <div className="space-y-6 animate-slide-up">
-              {/* Materials Card */}
-              <div className="rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-8 shadow-sm">
-                <h2 className="text-base font-bold text-slate-900 mb-4 flex items-center justify-between">
-                  <span>Imtihon materiallari</span>
-                  <span className="text-xs font-normal text-slate-500">
-                    {files ? `${files.length} ta fayl` : ''}
-                  </span>
-                </h2>
-
-                {files && files.length > 0 ? (
-                  <div className="space-y-4">
-                    {files.map((f) => {
-                      const isImage = f.file_name.match(/\.(png|jpg|jpeg|gif|webp)$/i)
-                      const isVideo = f.file_name.match(/\.(mp4|webm|mov|avi)$/i)
-                      const isZip = f.file_name.match(/\.zip$/i)
-                      const src = mediaUrls[f.id]
-                      const badgeText = isImage ? 'Rasm' : isVideo ? 'Video' : isZip ? 'ZIP' : 'Hujjat'
-
-                      return (
-                        <div
-                          key={f.id}
-                          className="rounded-2xl border border-slate-200/80 bg-slate-50/50 p-4 transition-all hover:bg-white hover:shadow-md"
-                        >
-                          <div className="flex items-center justify-between gap-3 mb-2">
-                            <div className="flex items-center gap-2.5 truncate">
-                              <span className="rounded-lg bg-slate-200/80 px-2 py-0.5 text-[11px] font-bold text-slate-700 uppercase">
-                                {badgeText}
-                              </span>
-                              <span className="truncate text-sm font-bold text-slate-800">
-                                {f.file_name}
-                              </span>
-                            </div>
-
-                            <button
-                              type="button"
-                              onClick={() => handleDownload(f)}
-                              className="shrink-0 rounded-xl bg-slate-900 px-3.5 py-1.5 text-xs font-semibold text-white transition-all hover:bg-slate-800"
-                            >
-                              Yuklab olish
-                            </button>
-                          </div>
-
-                          {/* Image preview */}
-                          {isImage && src && (
-                            <div className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-white p-1">
-                              <img
-                                src={src}
-                                alt={f.file_name}
-                                className="max-h-80 w-full object-contain rounded-lg cursor-pointer transition-opacity hover:opacity-95"
-                                onClick={() => handleDownload(f)}
-                              />
-                            </div>
-                          )}
-
-                          {/* Video Player */}
-                          {isVideo && src && (
-                            <div className="mt-3 overflow-hidden rounded-xl bg-black">
-                              <video
-                                controls
-                                controlsList="nodownload"
-                                src={src}
-                                className="max-h-80 w-full rounded-xl"
-                              >
-                                Brauzeringiz HTML5 videoni qo'llab-quvvatlamaydi.
-                              </video>
-                            </div>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                ) : (
-                  <p className="text-xs text-slate-400 italic">
-                    O'qituvchi tomonidan qo'shimcha materiallar biriktirilmagan.
-                  </p>
-                )}
-              </div>
-
-              {/* Submit Solution Card */}
-              <div className="rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-8 shadow-sm">
-                <h2 className="text-base font-bold text-slate-900 mb-1">
-                  Javobingizni topshirish (.zip fayl)
-                </h2>
-                <p className="text-xs text-slate-500 mb-5">
-                  Barcha javoblar yoki kodingizni bitta <strong>.zip</strong> arxivga solib yuklang.
-                </p>
-
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="relative">
-                    <input
-                      type="file"
-                      accept=".zip"
-                      required
-                      onChange={handleFileSelect}
-                      className="block w-full text-xs text-slate-500 file:mr-4 file:cursor-pointer file:rounded-xl file:border-0 file:bg-blue-50 file:px-4 file:py-2.5 file:text-xs file:font-semibold file:text-blue-700 file:transition-all hover:file:bg-blue-100"
-                    />
-                  </div>
-
-                  {selectedFile && !fileError && (
-                    <div className="animate-fade-in rounded-xl bg-emerald-50 p-3 text-xs font-semibold text-emerald-800 border border-emerald-200/80 flex items-center justify-between">
-                      <span>{selectedFile.name}</span>
-                      <span className="font-normal text-emerald-600">
-                        {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
-                      </span>
-                    </div>
-                  )}
-
-                  {fileError && (
-                    <div className="animate-fade-in text-xs font-semibold text-red-600">
-                      {fileError}
-                    </div>
-                  )}
-
-                  {actionError && (
-                    <div className="animate-fade-in text-xs font-semibold text-red-600">
-                      {actionError}
-                    </div>
-                  )}
-
-                  <button
-                    type="submit"
-                    disabled={submitting || !selectedFile || !!fileError}
-                    className="w-full sm:w-auto rounded-2xl bg-emerald-600 px-8 py-3.5 text-sm font-bold text-white shadow-lg shadow-emerald-600/30 transition-all hover:bg-emerald-700 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:translate-y-0 disabled:shadow-none"
-                  >
-                    {submitting ? 'Yuklanmoqda...' : 'Topshiriqni yuborish'}
-                  </button>
-                </form>
-              </div>
+                <button
+                  type="submit"
+                  disabled={submitting || !selectedFile || !!fileError}
+                  className="w-full sm:w-auto cursor-pointer rounded bg-emerald-600 px-6 py-2.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50 inline-flex items-center justify-center gap-1.5 shadow-2xs"
+                >
+                  <Upload className="h-3.5 w-3.5" />
+                  <span>{submitting ? 'Yuklanmoqda...' : 'Topshiriqni yuborish'}</span>
+                </button>
+              </form>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </main>
     </div>
   )

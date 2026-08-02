@@ -2,56 +2,38 @@
 
 @theme {
   --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-  --color-brand-50: oklch(0.96 0.02 255);
-  --color-brand-100: oklch(0.90 0.04 255);
-  --color-brand-200: oklch(0.82 0.08 255);
-  --color-brand-300: oklch(0.73 0.12 255);
-  --color-brand-400: oklch(0.64 0.16 255);
-  --color-brand-500: oklch(0.55 0.18 255);
-  --color-brand-600: oklch(0.46 0.16 255);
-  --color-brand-700: oklch(0.38 0.14 255);
-  --color-brand-800: oklch(0.29 0.11 255);
-  --color-brand-900: oklch(0.20 0.07 255);
-  --color-brand-950: oklch(0.14 0.04 255);
+  --color-primary-01: #FABB00;
+  --color-primary-02: #FFF9E6;
+  --color-accent-blue: #228BE6;
+  --color-accent-blue-hover: #1C7ED6;
+}
+
+:root {
+  --primary-01: #FABB00;
+  --primary-02: #FFF9E6;
+  --accent-blue: #228BE6;
 }
 
 body {
   font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
+  background-color: #F1F5F9; /* Slate-100 neutral canvas for clear card contrast */
+  color: #0F172A;
 }
 
+/* Base Card utility for high-contrast crisp boundary */
+.ui-card {
+  background-color: #FFFFFF;
+  border: 1px solid #CBD5E1; /* Slate-300 crisp border */
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05);
+}
+
+/* Animations */
 @keyframes fade-in {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes slide-up {
-  from { opacity: 0; transform: translateY(16px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes scale-in {
-  from { opacity: 0; transform: scale(0.95); }
-  to   { opacity: 1; transform: scale(1); }
-}
-
-@keyframes pulse-soft {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.65; }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 .animate-fade-in {
-  animation: fade-in 0.25s ease-out;
-}
-
-.animate-slide-up {
-  animation: slide-up 0.35s ease-out;
-}
-
-.animate-scale-in {
-  animation: scale-in 0.2s ease-out;
-}
-
-.animate-pulse-soft {
-  animation: pulse-soft 2s ease-in-out infinite;
+  animation: fade-in 0.15s ease-out;
 }
